@@ -72,7 +72,7 @@ sequenceDiagram
     *   Middleware para autenticación y validación de GCS.
     *   Endpoints de ingesta, búsqueda y gestión de archivos.
     *   Lógica de negocio reutilizada de `legacy/` para manejo de PDFs e imágenes.
-*   **Persistencia:** Índice local estructurado (JSON/Parquet) que mapea documentos/imágenes a sus vectores. Los documentos crudos residen en GCS.
+* **Persistencia:** Índice vectorial local (ChromaDB) que se persiste mediante sincronización con GCS. Al iniciar el contenedor en Cloud Run, el backend descarga el índice desde GCS; durante la ejecución, los cambios se sincronizan de vuelta al bucket para asegurar la persistencia tras reinicios o despliegues.
 
 ## 4. Infraestructura y Despliegue (GCP)
 

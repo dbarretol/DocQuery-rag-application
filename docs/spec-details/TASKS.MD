@@ -22,13 +22,13 @@ Este documento define los paquetes de trabajo sistemáticos para construir la pl
 ## Fase 3: Lógica RAG Multimodal
 - [ ] Adaptar `intro_multimodal_rag_utils.py` a la estructura del backend.
 - [ ] Utilizar **ChromaDB** como almacén vectorial persistente.
-- [ ] Implementar persistencia del índice para evitar reindexación al reiniciar.
+- [ ] Implementar lógica de sincronización: `GCS <-> ChromaDB` (descarga al inicio, subida al añadir/eliminar).
 - [ ] **Pipeline de ingesta:**
   - [ ] Implementar extracción de contenido (PDF, Markdown, imágenes).
   - [ ] Implementar chunking configurable.
   - [ ] Implementar generación de descripciones (Gemini).
   - [ ] Implementar generación de embeddings.
-  - [ ] Implementar almacenamiento de embeddings y metadatos.
+  - [ ] Implementar almacenamiento de embeddings y metadatos en ChromaDB.
 - [ ] Implementar estados del documento (Uploaded, Processing, Indexed, Error).
 - [ ] Implementar sincronización entre documentos en GCS y registros de ChromaDB.
 - [ ] Implementar reindexación manual y detección de cambios.
@@ -36,7 +36,7 @@ Este documento define los paquetes de trabajo sistemáticos para construir la pl
 - [ ] Implementar motor de búsqueda semántica (Retrieval) recuperando fuentes utilizadas.
 - [ ] Implementar servicio de generación de respuesta con referencias estructuradas.
 - [ ] Implementar eliminación completa (GCS + ChromaDB + limpieza de chunks).
-- [ ] **Validación:** Tests unitarios (mocking), validación de persistencia tras reinicio, verificación de eliminación completa y trazabilidad de fuentes.
+- [ ] **Validación:** Tests unitarios (mocking), validación de sincronización con GCS tras reinicio, verificación de eliminación completa y trazabilidad de fuentes.
 
 ## Fase 4: Frontend (Next.js)
 - [ ] Inicializar proyecto Next.js en `app/frontend`.
