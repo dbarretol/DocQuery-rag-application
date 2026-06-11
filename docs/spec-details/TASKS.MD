@@ -7,12 +7,12 @@ Entorno: Python con `uv`, PowerShell en Windows.
 
 ## Fase 1: Configuración del entorno
 
-- [ ] `uv init` y configurar `pyproject.toml`.
-- [ ] Estructurar carpetas según ARCHITECTURE.md.
-- [ ] Crear `.gitignore` (Python + uv + secrets) y `.dockerignore`.
-- [ ] `uv add --dev ruff pytest`.
-- [ ] Configurar `[tool.ruff]` en `pyproject.toml` (target Python 3.12, line-length 100).
-- [ ] Inicializar repositorio Git y primer commit limpio (sin secretos).
+- [x] `uv init` y configurar `pyproject.toml`.
+- [x] Estructurar carpetas según ARCHITECTURE.md.
+- [x] Crear `.gitignore` (Python + uv + secrets) y `.dockerignore`.
+- [x] `uv add --dev ruff pytest`.
+- [x] Configurar `[tool.ruff]` en `pyproject.toml` (target Python 3.12, line-length 100).
+- [x] Inicializar repositorio Git y primer commit limpio (sin secretos).
 
 **Validación:** `ruff check .` sin errores; `git status` no muestra archivos sensibles.
 
