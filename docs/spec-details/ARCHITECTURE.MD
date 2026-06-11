@@ -10,17 +10,17 @@ graph TD
     UI --> API[FastAPI Backend]
     
     subgraph "Containerized RAG Core"
-        API --> ChromaDB[(ChromaDB Local)]
+        API --> ChromaDB[(ChromaDB - Volumen Docker)]
         API --> GCS[GCS Client (Opcional)]
     end
     
     subgraph "External AI"
-        API --> Gemini[Gemini API (SDK)]
+        API --> Gemini[Gemini API SDK]
     end
     
     subgraph "CI/CD & Deployment"
-        GH[GitHub] --> GHA[GitHub Actions]
-        GHA --> GHCR[GitHub Container Registry]
+        GH[GitHub] --> GHA[GitHub Actions + Ruff Lint]
+        GHA --> GHCR[GHCR - Tags: latest + SHA]
         GHCR --> CR[Cloud Run]
     end
 ```
@@ -32,7 +32,7 @@ graph TD
 2.  **Validación de Bucket:** Opcional al iniciar; no bloquea el arranque. Si falla, se prioriza el modo local.
 3.  **Procesamiento:** 
     *   Extracción, Chunking, Generación de descripciones, Embeddings (usando `google-generativeai` SDK).
-    *   Almacenamiento en **ChromaDB Local**.
+    *   Almacenamiento en **ChromaDB Local** (mapeado a volumen Docker).
 4.  **Persistencia:** Si `GCS_BUCKET` está configurado, se sincroniza el índice de ChromaDB con el bucket GCS.
 
 ### 2.2. Consulta RAG (Multimodal)
@@ -44,12 +44,12 @@ graph TD
 
 *   **Frontend:** Integrado en FastAPI mediante plantillas Jinja2 (sin JS externo complejo). *Nota: La UI no solicita ni almacena API Keys, estas se gestionan exclusivamente en el backend mediante variables de entorno.*
 *   **Backend:** FastAPI con gestión de paquetes `uv`.
-*   **Persistencia:** ChromaDB local (persistido en volumen Docker). La validación del bucket se realiza de forma no bloqueante; si falla, el backend opera en modo local persistente.
-*   **Migración:** Uso explícito de `google-generativeai` SDK.
+*   **Persistencia:** ChromaDB local (persistido en volumen Docker mapeado `-v`). La validación del bucket se realiza de forma no bloqueante; si falla, el backend opera en modo local persistente.
+*   **Código:** Migración explícita a `google-generativeai` SDK.
 
 ## 4. Infraestructura y Despliegue (GCP/Local)
 
-*   **GitHub Actions:** Automatiza el build/push a GitHub Container Registry (GHCR).
+*   **GitHub Actions:** Automatiza el build/push a GitHub Container Registry (GHCR), incluye `ruff check` y tag por SHA.
 *   **Cloud Run:** Despliegue del contenedor.
 *   **Gestión IAM:** Se requiere si se configura sincronización con GCS (`roles/storage.admin`).
 

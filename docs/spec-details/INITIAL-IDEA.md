@@ -5,13 +5,13 @@ Plataforma web para consulta inteligente de documentos. Permite indexar, consult
 
 ## 2. Objetivo y caso de uso
 **Objetivo:** Explorar corpus documentales mediante RAG multimodal, garantizando trazabilidad y contexto visual.
-**Caso de uso:** Análisis rápido de informes (ej. 10-K) con indexación persistente local (ChromaDB) y sincronización opcional con GCS.
+**Caso de uso:** Análisis rápido de informes (ej. 10-K) con indexación persistente local (ChromaDB mediante volumen Docker) y sincronización opcional con GCS.
 
 ## 3. Arquitectura de alto nivel
 *   **Frontend/Backend:** Integrados en un solo servicio FastAPI usando plantillas Jinja2 (sin Node.js).
-*   **Almacenamiento:** ChromaDB local (persistido en volumen Docker). Sincronización opcional con GCS.
+*   **Almacenamiento:** ChromaDB local (persistido en volumen Docker mapeado). Sincronización opcional con GCS.
 *   **IA/ML:** Gemini API (SDK `google-generativeai`).
-*   **Despliegue:** Cloud Run (contenedor Docker), CI/CD vía GitHub Actions y GHCR.
+*   **Despliegue:** Cloud Run (contenedor Docker), CI/CD vía GitHub Actions, GHCR y linting con Ruff.
 
 ## 4. Componentes y Flujo
 *   **Gestión GCS (Opcional):** Configuración de bucket GCS. Validación al iniciar (No bloqueante). Si falla, opera en modo local puro.
@@ -19,8 +19,8 @@ Plataforma web para consulta inteligente de documentos. Permite indexar, consult
 *   **Gestión Documental:** Interfaz para listar, ver y eliminar archivos indexados.
 
 ## 5. Tecnologías
-*   **Backend:** Python (`uv`), FastAPI, Jinja2, `google-generativeai`, `chromadb`.
-*   **Despliegue:** Docker, GitHub Actions, GHCR, Cloud Run.
+*   **Backend:** Python (`uv`), FastAPI, Jinja2, `google-generativeai`, `chromadb`, `ruff` (linting).
+*   **Despliegue:** Docker (multi-stage), GitHub Actions, GHCR, Cloud Run.
 
 ## 6. Infraestructura y despliegue
 ### Flujos
@@ -28,19 +28,18 @@ Plataforma web para consulta inteligente de documentos. Permite indexar, consult
 *   **Consultas RAG:** `User Query` -> `Retrieval (ChromaDB)` -> `Gemini Generation` -> `Respuesta + Citas`.
 
 ### CI/CD
-1. `Push` a GitHub -> GitHub Actions compila Docker.
-2. Imagen enviada a GHCR (GitHub Container Registry).
+1. `Push` a GitHub -> GitHub Actions (Linter Ruff + Tests) -> Compila Docker.
+2. Imagen enviada a GHCR con tags `:latest` y `:${{ github.sha }}`.
 3. Despliegue en Cloud Run (o ejecución local).
 
 ### Variables y Permisos
-*   **Variables:** `API_KEY` (Gemini), `GCS_BUCKET` (opcional). 
-    *   *Nota: La API Key se inyecta exclusivamente vía variable de entorno en el contenedor, nunca a través de la UI.*
+*   **Variables:** `API_KEY` (Gemini), `GCS_BUCKET` (opcional).
 *   **IAM:** Si se usa GCS, cuenta de servicio con `roles/storage.admin`.
 
 ## 7. Cumplimiento con la Rúbrica
 | Criterio | Estrategia de Cumplimiento |
 | :--- | :--- |
-| **Arranca con 1 docker run** | Imagen autocontenida; modo local offline por defecto. |
+| **Arranca con 1 docker run** | Imagen autocontenida; modo local offline por defecto; uso de volúmenes para persistencia. |
 | **IA funcional** | RAG multimodal con SDK `google-generativeai`. |
-| **README claro** | Guía de ejecución simple; ejemplo de entrada/salida. |
-| **Puntos extra** | Dockerfile multi-stage, `uv`, GitHub Actions, logs/métricas. |
+| **README claro** | Guía de ejecución con comando `docker run -v` para persistencia; ejemplo de entrada/salida. |
+| **Puntos extra** | Dockerfile multi-stage, `uv`, GitHub Actions (tags SHA + lint), logs/métricas. |

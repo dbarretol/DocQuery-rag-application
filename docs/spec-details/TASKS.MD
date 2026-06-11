@@ -6,7 +6,9 @@ Este documento define los paquetes de trabajo sistemáticos para construir la pl
 - [ ] Inicializar entorno Python con `uv`.
 - [ ] Estructurar carpetas (`app/backend`, `docs`).
 - [ ] Configurar `.gitignore` y `.dockerignore`.
-- [ ] **Validación:** Verificar entorno virtual activo.
+- [ ] `uv add --dev ruff`.
+- [ ] Configurar `[tool.ruff]` en `pyproject.toml`.
+- [ ] **Validación:** Verificar entorno virtual activo y ejecución de `ruff check .`.
 
 ## Fase 2: Backend Core (FastAPI & GCS Opcional)
 - [ ] Configurar FastAPI y dependencias (`uv add fastapi uvicorn google-cloud-storage chromadb google-generativeai`).
@@ -16,7 +18,7 @@ Este documento define los paquetes de trabajo sistemáticos para construir la pl
 - [ ] Implementar validación de tipos, tamaños y límites de carga.
 - [ ] Implementar endpoint `/health` y `/metrics`.
 - [ ] Implementar readiness y liveness checks.
-- [ ] **Validación:** Tests de integración para endpoints de GCS y simulación de buckets inválidos (ejecución solo en CI).
+- [ ] **Validación:** Tests de integración para endpoints de GCS (ejecución solo en CI).
 
 ## Fase 3: Lógica RAG Multimodal & Persistencia
 - [ ] **Refactorizar `intro_multimodal_rag_utils.py` para usar `google-generativeai` SDK.**
@@ -43,11 +45,13 @@ Este documento define los paquetes de trabajo sistemáticos para construir la pl
 
 ## Fase 5: Infraestructura, CI/CD y Despliegue
 - [ ] Crear `Dockerfile` multi-stage.
-- [ ] Crear workflow de GitHub Actions para build/push a GHCR.
+- [ ] Crear workflow de GitHub Actions:
+  - [ ] Paso de `ruff check .`.
+  - [ ] Build/push a GHCR con tags `:latest` y `:${{ github.sha }}`.
 - [ ] Configurar despliegue en Cloud Run.
 - [ ] Gestionar secretos (variables de entorno).
 - [ ] Configurar logging estructurado para Cloud Run.
-- [ ] Definir IAM mínima (`roles/storage.admin` para simplicidad académica).
+- [ ] Definir IAM mínima (`roles/storage.admin`).
 - [ ] Documentar despliegue en `README.md`.
 - [ ] **Validación:** Verificación de logs en Cloud Run y ejecución desde imagen en entorno limpio.
 
@@ -59,8 +63,9 @@ Este documento define los paquetes de trabajo sistemáticos para construir la pl
 - [ ] **Validación:** QA final de seguridad y rendimiento.
 
 ## Fase 7: Verificación de Rúbrica
+- [ ] **Redactar README:** Incluir comando `docker run` (con `-v` para persistencia de ChromaDB), ejemplo de entrada/salida real, y aclaración de modos (local vs GCS).
 - [ ] Verificar arranque con único comando `docker run`.
-- [ ] Verificar README con pasos exigidos.
 - [ ] Verificar inyección de API Keys vía variables de entorno.
-- [ ] Ejecutar prueba completa siguiendo únicamente el README.
+- [ ] Verificar ejecución sin dependencias locales adicionales.
+- [ ] Ejecutar prueba completa siguiendo únicamente el README (simulación de evaluación).
 - [ ] **Validación:** Simulación de entorno limpio para evaluación del profesor.
