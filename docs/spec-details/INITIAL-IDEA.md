@@ -1,56 +1,45 @@
-# INITIAL-IDEA.md: Intelligent Multimodal RAG Platform (GCP Edition)
+# INITIAL-IDEA.md: Intelligent Multimodal RAG Platform (MVP Evaluable)
 
 ## 1. Descripción general
-Plataforma web para consulta inteligente de documentos almacenados en Google Cloud Storage (GCS). Permite indexar, consultar y gestionar documentos mixtos (PDF, MD, Imágenes) utilizando capacidades multimodales de Gemini en GCP.
+Plataforma web para consulta inteligente de documentos. Permite indexar, consultar y gestionar documentos mixtos (PDF, MD, Imágenes) utilizando capacidades multimodales de Gemini. Arquitectura optimizada para ser evaluable mediante un solo `docker run` sin dependencias externas obligatorias.
 
 ## 2. Objetivo y caso de uso
-**Objetivo:** Explorar corpus documentales en GCS mediante RAG multimodal, garantizando trazabilidad y manejo de contexto visual.  
-**Caso de uso:** Análisis corporativo de informes financieros y técnicos alojados en GCS, con indexación centralizada y persistente.
+**Objetivo:** Explorar corpus documentales mediante RAG multimodal, garantizando trazabilidad y contexto visual.
+**Caso de uso:** Análisis rápido de informes (ej. 10-K) con indexación persistente local (ChromaDB) y sincronización opcional con GCS.
 
 ## 3. Arquitectura de alto nivel
-*   **Frontend:** Next.js (TypeScript) para la interfaz de usuario.
-*   **Backend:** FastAPI en Python (gestión `uv`).
-*   **Almacenamiento de Documentos:** Google Cloud Storage (GCS).
-*   **IA/ML:** Gemini API (Vertex AI).
-*   **Despliegue:** Cloud Run (contenedor Docker), CI/CD vía Cloud Build y Artifact Registry.
+*   **Frontend/Backend:** Integrados en un solo servicio FastAPI usando plantillas Jinja2 (sin Node.js).
+*   **Almacenamiento:** ChromaDB local (persistido en volumen Docker). Sincronización opcional con GCS.
+*   **IA/ML:** Gemini API (SDK `google-generativeai`).
+*   **Despliegue:** Cloud Run (contenedor Docker), CI/CD vía GitHub Actions y GHCR.
 
 ## 4. Componentes y Flujo
-*   **Gestión GCS:** Interfaz para definir bucket público. Validación de acceso al iniciar.
-*   **Ingestión:** El usuario sube archivos -> Se guardan en GCS -> Se disparan funciones de procesamiento -> Indexación en memoria/persistente.
-*   **Gestión Documental:** Interfaz para listar, ver y eliminar archivos indexados (sincronizando GCS y el índice).
+*   **Gestión GCS (Opcional):** Configuración de bucket GCS. Validación al iniciar. Si falla, opera en modo local puro.
+*   **Ingestión:** Subida de archivos -> Procesamiento (Chunking, Embeddings) -> Almacenamiento en ChromaDB.
+*   **Gestión Documental:** Interfaz para listar, ver y eliminar archivos indexados.
 
 ## 5. Tecnologías
-*   **Backend:** Python (`uv`), FastAPI, Google Cloud Storage Client.
-*   **Frontend:** Next.js (TypeScript).
-*   **IA:** Vertex AI (Gemini Flash), Multimodal Embeddings.
-*   **Despliegue:** Docker, Cloud Build, Artifact Registry, Cloud Run.
+*   **Backend:** Python (`uv`), FastAPI, Jinja2, `google-generativeai`, `chromadb`.
+*   **Despliegue:** Docker, GitHub Actions, GHCR, Cloud Run.
 
-## 6. Infraestructura y despliegue en Google Cloud
-### Componentes GCP
-*   **Cloud Storage:** Almacenamiento centralizado de documentos para ingestión.
-*   **Artifact Registry:** Almacén de imágenes Docker.
-*   **Cloud Build:** Automatización de CI/CD (build y push).
-*   **Cloud Run:** Plataforma de ejecución escalable del servicio.
-
+## 6. Infraestructura y despliegue
 ### Flujos
-*   **Ingestión:** `UI (Config Bucket)` -> `Backend (Validación GCP/GCS)` -> `Upload GCS` -> `Procesamiento/Embeddings` -> `Actualización de Índice`.
-*   **Consultas RAG:** `User Query` -> `Retrieval (GCS context)` -> `Augmentation` -> `Gemini Generation` -> `Citas`.
-*   **Gestión Documentos:** El backend expone endpoints para listar/eliminar en GCS y actualizar el índice local (JSON/Parquet).
+*   **Ingestión:** `UI` -> `FastAPI Backend` -> `Procesamiento/Embeddings` -> `ChromaDB` -> `Sincronización GCS (Opcional)`.
+*   **Consultas RAG:** `User Query` -> `Retrieval (ChromaDB)` -> `Gemini Generation` -> `Respuesta + Citas`.
 
 ### CI/CD
-1.  `Push` a GitHub -> Cloud Build detecta cambios.
-2.  Cloud Build compila la imagen Docker.
-3.  Imagen enviada a Artifact Registry.
-4.  Cloud Run despliega automáticamente la nueva versión.
+1. `Push` a GitHub -> GitHub Actions compila Docker.
+2. Imagen enviada a GHCR (GitHub Container Registry).
+3. Despliegue en Cloud Run (o ejecución local).
 
 ### Variables y Permisos
-*   **Variables:** `BUCKET_NAME`, `PROJECT_ID`, `GCP_REGION`, `API_KEY` (secret manager).
-*   **IAM:** La cuenta de servicio de Cloud Run requiere `roles/storage.objectViewer` (o Admin según alcance).
+*   **Variables:** `API_KEY` (Gemini), `GCS_BUCKET` (opcional).
+*   **IAM:** Si se usa GCS, cuenta de servicio con `roles/storage.admin`.
 
 ## 7. Cumplimiento con la Rúbrica
 | Criterio | Estrategia de Cumplimiento |
 | :--- | :--- |
-| **Arranca con 1 docker run** | Imagen en Cloud Run/Docker; README con comandos. |
-| **IA funcional** | RAG multimodal con Gemini en Vertex AI. |
-| **README claro** | Guía de configuración GCP, despliegue y uso. |
-| **Puntos extra** | Dockerfile multi-stage, `uv`, CI/CD (Cloud Build). |
+| **Arranca con 1 docker run** | Imagen autocontenida; modo local offline por defecto. |
+| **IA funcional** | RAG multimodal con SDK `google-generativeai`. |
+| **README claro** | Guía de ejecución simple; ejemplo de entrada/salida. |
+| **Puntos extra** | Dockerfile multi-stage, `uv`, GitHub Actions, logs/métricas. |

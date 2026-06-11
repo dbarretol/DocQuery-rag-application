@@ -1,89 +1,58 @@
-# Arquitectura del Sistema: Intelligent Multimodal RAG Platform
+# Arquitectura del Sistema: Intelligent Multimodal RAG Platform (MVP Evaluable)
 
-Este documento detalla la arquitectura técnica, el flujo de datos y la infraestructura en la nube para la plataforma de RAG multimodal.
+Este documento detalla la arquitectura técnica simplificada para garantizar la evaluabilidad del proyecto.
 
 ## 1. Diagrama de Arquitectura de Alto Nivel
 
 ```mermaid
 graph TD
-    User((Usuario)) --> UI[Next.js Frontend]
+    User((Usuario)) --> UI[FastAPI + Jinja2 UI]
     UI --> API[FastAPI Backend]
     
-    subgraph "GCP Cloud Infrastructure"
-        API --> GCS[(Google Cloud Storage)]
-        API --> VAI[Vertex AI / Gemini API]
-        API --> Index[(Índice Local/Persistent)]
+    subgraph "Containerized RAG Core"
+        API --> ChromaDB[(ChromaDB Local)]
+        API --> GCS[GCS Client (Opcional)]
     end
     
-    subgraph "CI/CD Pipeline"
-        GH[GitHub] --> CB[Cloud Build]
-        CB --> AR[Artifact Registry]
-        AR --> CR[Cloud Run]
+    subgraph "External AI"
+        API --> Gemini[Gemini API]
+    end
+    
+    subgraph "CI/CD & Deployment"
+        GH[GitHub] --> GHA[GitHub Actions]
+        GHA --> GHCR[GitHub Container Registry]
+        GHCR --> CR[Cloud Run]
     end
 ```
 
 ## 2. Flujo de Datos
 
 ### 2.1. Ingestión y Procesamiento
-1.  **Validación:** La UI solicita validación de acceso al bucket GCS al backend.
-2.  **Carga:** El usuario sube archivos a través de la UI; el backend los almacena en GCS.
-3.  **Procesamiento:**
-    *   Extracción de texto e imágenes (usando `fitz`/PyMuPDF).
-    *   Generación de descripciones de imágenes (Gemini Flash).
-    *   Generación de Embeddings (Text & Multimodal).
-    *   Almacenamiento de metadatos en índice persistente.
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant Backend
-    participant GCS
-    participant AI as Vertex AI/Gemini
-
-    User->>Backend: Cargar documentos (Bucket Config)
-    Backend->>GCS: Validar acceso y subir archivos
-    Backend->>AI: Generar descripciones/embeddings
-    Backend->>Backend: Actualizar índice (JSON/Parquet)
-    Backend-->>User: Confirmación de indexación
-```
+1.  **Carga:** El usuario sube archivos a través del formulario simple (UI).
+2.  **Procesamiento:** 
+    *   Extracción, Chunking, Generación de descripciones, Embeddings.
+    *   Almacenamiento en **ChromaDB Local**.
+3.  **Persistencia:** Si `GCS_BUCKET` está configurado, se sincroniza el índice de ChromaDB con el bucket GCS.
 
 ### 2.2. Consulta RAG (Multimodal)
-1.  **Retrieval:** Búsqueda por similitud de coseno en los embeddings almacenados (texto o imagen).
-2.  **Augmentation:** Recuperación de contexto desde GCS (fragmentos de texto e imágenes coincidentes).
-3.  **Generation:** Consulta multimodales enviada a Gemini con el contexto recuperado.
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant Backend
-    participant AI as Vertex AI/Gemini
-
-    User->>Backend: Pregunta (Query)
-    Backend->>Backend: Búsqueda Semántica (Cosinesimilarity)
-    Backend->>AI: Prompt + Contexto (Text/Images)
-    AI-->>Backend: Respuesta Generada
-    Backend-->>User: Respuesta + Citas
-```
+1.  **Retrieval:** Búsqueda semántica en ChromaDB.
+2.  **Augmentation:** Recuperación de contexto.
+3.  **Generation:** Consulta vía `google-generativeai` SDK.
 
 ## 3. Componentes Técnicos
 
-*   **Frontend (Next.js):** SPA para interacción, configuración de bucket y visualización de respuestas con fuentes citadas.
-*   **Backend (FastAPI):**
-    *   Middleware para autenticación y validación de GCS.
-    *   Endpoints de ingesta, búsqueda y gestión de archivos.
-    *   Lógica de negocio reutilizada de `legacy/` para manejo de PDFs e imágenes.
-* **Persistencia:** Índice vectorial local (ChromaDB) que se persiste mediante sincronización con GCS. Al iniciar el contenedor en Cloud Run, el backend descarga el índice desde GCS; durante la ejecución, los cambios se sincronizan de vuelta al bucket para asegurar la persistencia tras reinicios o despliegues.
+*   **Frontend:** Integrado en FastAPI mediante plantillas Jinja2 (sin JS externo complejo).
+*   **Backend:** FastAPI con gestión de paquetes `uv`.
+*   **Persistencia:** ChromaDB local (persistido en volumen Docker).
 
-## 4. Infraestructura y Despliegue (GCP)
+## 4. Infraestructura y Despliegue (GCP/Local)
 
-*   **Cloud Build:** Automatiza la construcción de la imagen Docker mediante `cloudbuild.yaml` al detectar cambios en el repositorio.
-*   **Artifact Registry:** Almacena las versiones de las imágenes Docker (tagging por commit SHA).
-*   **Cloud Run:** Despliega el contenedor. Escala a cero cuando no hay tráfico.
-*   **Gestión IAM:** La cuenta de servicio asociada a Cloud Run tiene el rol `roles/storage.objectViewer` para leer los documentos desde GCS.
+*   **GitHub Actions:** Automatiza el build/push a GitHub Container Registry (GHCR).
+*   **Cloud Run:** Despliegue del contenedor.
+*   **Gestión IAM:** Se requiere si se configura sincronización con GCS (`roles/storage.admin`).
 
 ## 5. Gestión de Documentos
-La lógica de eliminación implica:
-1.  Endpoint `DELETE /documents/{doc_id}`.
-2.  Borrado del objeto en GCS.
-3.  Reconstrucción o filtrado del índice persistente local para eliminar referencias al documento borrado.
-4.  Respuesta confirmando la eliminación sincronizada.
+La eliminación implica:
+1.  `DELETE /documents/{doc_id}`.
+2.  Borrado en ChromaDB + GCS (si aplica).
+3.  Reindexación y respuesta síncrona.
