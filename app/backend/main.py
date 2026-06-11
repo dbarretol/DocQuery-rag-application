@@ -1,12 +1,17 @@
 import logging
 import sys
-from fastapi import FastAPI, UploadFile, File
+import shutil
+import os
+from fastapi import FastAPI, UploadFile, File, BackgroundTasks
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 from starlette.requests import Request
 from pythonjsonlogger import json
+from app.backend.rag.ingest import ingest_document
+from app.backend.rag.retrieval import retrieve_context
+from app.backend.rag.generation import generate_answer
 
 # Setup JSON Logging for Cloud Run compatibility
 logger = logging.getLogger("uvicorn")
@@ -29,6 +34,10 @@ app.add_middleware(
 
 templates = Jinja2Templates(directory="app/templates")
 
+# Temporary storage for uploaded files to be processed
+UPLOAD_DIR = "data/uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}
@@ -38,8 +47,14 @@ async def read_root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 @app.post("/upload")
-async def upload_document(file: UploadFile = File(...)):
-    logger.info("Received file", extra={"filename": file.filename})
+async def upload_document(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
+    file_path = os.path.join(UPLOAD_DIR, file.filename)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    background_tasks.add_task(ingest_document, file_path, file.filename)
+    
+    logger.info("Received file, queued for processing", extra={"filename": file.filename})
     return {"message": "Document accepted for processing", "filename": file.filename}
 
 @app.get("/documents")
@@ -55,4 +70,8 @@ async def delete_document(doc_id: str):
 async def chat(data: dict):
     question = data.get("question")
     logger.info("Received chat query", extra={"question": question})
-    return {"answer": f"Stub response for: {question}"}
+    
+    context = retrieve_context(question)
+    response = generate_answer(question, context)
+    
+    return response
