@@ -14,8 +14,8 @@ Plataforma web para consulta inteligente de documentos. Permite indexar, consult
 *   **Despliegue:** Cloud Run (contenedor Docker), CI/CD vía GitHub Actions y GHCR.
 
 ## 4. Componentes y Flujo
-*   **Gestión GCS (Opcional):** Configuración de bucket GCS. Validación al iniciar. Si falla, opera en modo local puro.
-*   **Ingestión:** Subida de archivos -> Procesamiento (Chunking, Embeddings) -> Almacenamiento en ChromaDB.
+*   **Gestión GCS (Opcional):** Configuración de bucket GCS. Validación al iniciar (No bloqueante). Si falla, opera en modo local puro.
+*   **Ingestión:** Subida de archivos -> Procesamiento (Chunking, Embeddings mediante Gemini SDK) -> Almacenamiento en ChromaDB.
 *   **Gestión Documental:** Interfaz para listar, ver y eliminar archivos indexados.
 
 ## 5. Tecnologías
@@ -24,7 +24,7 @@ Plataforma web para consulta inteligente de documentos. Permite indexar, consult
 
 ## 6. Infraestructura y despliegue
 ### Flujos
-*   **Ingestión:** `UI` -> `FastAPI Backend` -> `Procesamiento/Embeddings` -> `ChromaDB` -> `Sincronización GCS (Opcional)`.
+*   **Ingestión:** `UI` -> `FastAPI Backend` -> `Procesamiento/Embeddings (SDK google-generativeai)` -> `ChromaDB` -> `Sincronización GCS (Opcional)`.
 *   **Consultas RAG:** `User Query` -> `Retrieval (ChromaDB)` -> `Gemini Generation` -> `Respuesta + Citas`.
 
 ### CI/CD
@@ -33,7 +33,8 @@ Plataforma web para consulta inteligente de documentos. Permite indexar, consult
 3. Despliegue en Cloud Run (o ejecución local).
 
 ### Variables y Permisos
-*   **Variables:** `API_KEY` (Gemini), `GCS_BUCKET` (opcional).
+*   **Variables:** `API_KEY` (Gemini), `GCS_BUCKET` (opcional). 
+    *   *Nota: La API Key se inyecta exclusivamente vía variable de entorno en el contenedor, nunca a través de la UI.*
 *   **IAM:** Si se usa GCS, cuenta de servicio con `roles/storage.admin`.
 
 ## 7. Cumplimiento con la Rúbrica

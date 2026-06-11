@@ -15,7 +15,7 @@ graph TD
     end
     
     subgraph "External AI"
-        API --> Gemini[Gemini API]
+        API --> Gemini[Gemini API (SDK)]
     end
     
     subgraph "CI/CD & Deployment"
@@ -29,10 +29,11 @@ graph TD
 
 ### 2.1. Ingestión y Procesamiento
 1.  **Carga:** El usuario sube archivos a través del formulario simple (UI).
-2.  **Procesamiento:** 
-    *   Extracción, Chunking, Generación de descripciones, Embeddings.
+2.  **Validación de Bucket:** Opcional al iniciar; no bloquea el arranque. Si falla, se prioriza el modo local.
+3.  **Procesamiento:** 
+    *   Extracción, Chunking, Generación de descripciones, Embeddings (usando `google-generativeai` SDK).
     *   Almacenamiento en **ChromaDB Local**.
-3.  **Persistencia:** Si `GCS_BUCKET` está configurado, se sincroniza el índice de ChromaDB con el bucket GCS.
+4.  **Persistencia:** Si `GCS_BUCKET` está configurado, se sincroniza el índice de ChromaDB con el bucket GCS.
 
 ### 2.2. Consulta RAG (Multimodal)
 1.  **Retrieval:** Búsqueda semántica en ChromaDB.
@@ -41,9 +42,10 @@ graph TD
 
 ## 3. Componentes Técnicos
 
-*   **Frontend:** Integrado en FastAPI mediante plantillas Jinja2 (sin JS externo complejo).
+*   **Frontend:** Integrado en FastAPI mediante plantillas Jinja2 (sin JS externo complejo). *Nota: La UI no solicita ni almacena API Keys, estas se gestionan exclusivamente en el backend mediante variables de entorno.*
 *   **Backend:** FastAPI con gestión de paquetes `uv`.
-*   **Persistencia:** ChromaDB local (persistido en volumen Docker).
+*   **Persistencia:** ChromaDB local (persistido en volumen Docker). La validación del bucket se realiza de forma no bloqueante; si falla, el backend opera en modo local persistente.
+*   **Migración:** Uso explícito de `google-generativeai` SDK.
 
 ## 4. Infraestructura y Despliegue (GCP/Local)
 

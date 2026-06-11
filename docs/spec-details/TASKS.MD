@@ -12,14 +12,15 @@ Este documento define los paquetes de trabajo sistemáticos para construir la pl
 - [ ] Configurar FastAPI y dependencias (`uv add fastapi uvicorn google-cloud-storage chromadb google-generativeai`).
 - [ ] Implementar endpoint de consulta RAG (`POST /chat`).
 - [ ] Implementar servicios de subida/eliminación/listado de documentos.
-- [ ] Implementar validación de bucket GCS (opcional).
+- [ ] Implementar validación de bucket GCS (no bloqueante para el arranque).
 - [ ] Implementar validación de tipos, tamaños y límites de carga.
 - [ ] Implementar endpoint `/health` y `/metrics`.
-- [ ] **Validación:** Tests de integración para endpoints de GCS y simulación de buckets inválidos.
+- [ ] Implementar readiness y liveness checks.
+- [ ] **Validación:** Tests de integración para endpoints de GCS y simulación de buckets inválidos (ejecución solo en CI).
 
 ## Fase 3: Lógica RAG Multimodal & Persistencia
-- [ ] Adaptar `intro_multimodal_rag_utils.py` a la estructura del backend.
-- [ ] **Configurar ChromaDB como almacén vectorial local.**
+- [ ] **Refactorizar `intro_multimodal_rag_utils.py` para usar `google-generativeai` SDK.**
+- [ ] Utilizar **ChromaDB** como almacén vectorial local persistente.
 - [ ] Implementar sincronización ChromaDB <-> GCS (opcional, al inicio/final).
 - [ ] **Pipeline de ingesta modular:**
   - [ ] Implementar extracción de contenido (PDF, Markdown, imágenes).
@@ -29,12 +30,12 @@ Este documento define los paquetes de trabajo sistemáticos para construir la pl
   - [ ] Implementar almacenamiento en ChromaDB.
 - [ ] Implementar estados del documento (Uploaded, Processing, Indexed, Error).
 - [ ] Implementar sincronización y reindexación manual.
-- [ ] Implementar recuperación de fuentes (trazabilidad).
+- [ ] Implementar recuperación de fuentes (trazabilidad y metadatos).
 - [ ] **Validación:** Tests unitarios (mocking), verificación de persistencia local, verificación de trazabilidad.
 
 ## Fase 4: Frontend (Jinja2 Templates)
 - [ ] Implementar UI con plantillas Jinja2 dentro de FastAPI.
-- [ ] UI de configuración (Input bucket GCS, API Key).
+- [ ] UI de configuración (Input de bucket GCS solamente).
 - [ ] UI de Upload (drag & drop) integrado con API.
 - [ ] Panel de gestión (listado, estado de indexación, borrar).
 - [ ] Interfaz de chat (respuestas, citas, preguntas sugeridas).
@@ -44,13 +45,16 @@ Este documento define los paquetes de trabajo sistemáticos para construir la pl
 - [ ] Crear `Dockerfile` multi-stage.
 - [ ] Crear workflow de GitHub Actions para build/push a GHCR.
 - [ ] Configurar despliegue en Cloud Run.
-- [ ] Gestionar secretos (env variables).
+- [ ] Gestionar secretos (variables de entorno).
+- [ ] Configurar logging estructurado para Cloud Run.
+- [ ] Definir IAM mínima (`roles/storage.admin` para simplicidad académica).
 - [ ] Documentar despliegue en `README.md`.
 - [ ] **Validación:** Verificación de logs en Cloud Run y ejecución desde imagen en entorno limpio.
 
 ## Fase 6: Validación y QA
 - [ ] Tests unitarios (`pytest`) para pipeline de procesamiento.
-- [ ] Medir tiempo de indexación y latencia de consulta.
+- [ ] Medir tiempo de indexación para documentos de prueba.
+- [ ] Medir latencia media de consulta.
 - [ ] Verificar flujo completo de extremo a extremo.
 - [ ] **Validación:** QA final de seguridad y rendimiento.
 
