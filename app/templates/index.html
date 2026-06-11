@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Multimodal RAG Platform</title>
+</head>
+<body>
+    <h1>Multimodal RAG Platform</h1>
+    <h2>Upload Document</h2>
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        <input type="file" name="file">
+        <button type="submit">Upload</button>
+    </form>
+    <h2>Chat</h2>
+    <form action="/chat" method="post">
+        <input type="text" name="question">
+        <button type="submit">Chat</button>
+    </form>
+</body>
+</html>
