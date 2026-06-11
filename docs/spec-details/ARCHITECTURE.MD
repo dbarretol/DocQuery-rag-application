@@ -1,61 +1,139 @@
-# Arquitectura del Sistema: Intelligent Multimodal RAG Platform (MVP Evaluable)
+# ARCHITECTURE.md: Intelligent Multimodal RAG Platform
 
-Este documento detalla la arquitectura técnica simplificada para garantizar la evaluabilidad del proyecto.
+## 1. Diagrama de alto nivel
 
-## 1. Diagrama de Arquitectura de Alto Nivel
-
-```mermaid
-graph TD
-    User((Usuario)) --> UI[FastAPI + Jinja2 UI]
-    UI --> API[FastAPI Backend]
-    
-    subgraph "Containerized RAG Core"
-        API --> ChromaDB[(ChromaDB - Volumen Docker)]
-        API --> GCS[GCS Client (Opcional)]
-        API --> Metrics[Prometheus Instrumentator]
-    end
-    
-    subgraph "External AI"
-        API --> Gemini[Gemini API SDK]
-    end
-    
-    subgraph "CI/CD & Deployment"
-        GH[GitHub] --> GHA[GitHub Actions + Ruff Lint]
-        GHA --> GHCR[GHCR - Tags: latest + SHA]
-        GHCR --> CR[Cloud Run]
-    end
+```
+Usuario
+  │
+  ▼
+FastAPI + Jinja2 (puerto 8000)
+  │
+  ├── /upload      → Pipeline de ingesta
+  ├── /chat        → Pipeline RAG
+  ├── /documents   → Gestión documental
+  ├── /health      → Health check
+  └── /metrics     → Prometheus metrics
+  │
+  ├── ChromaDB ────────────────── volumen Docker /data/chroma
+  ├── Gemini API (google-genai) ── red, requiere GEMINI_API_KEY
+  └── GCS Client ──────────────── opcional, requiere GCS_BUCKET
 ```
 
-## 2. Flujo de Datos
+## 2. Flujo de ingestión
 
-### 2.1. Ingestión y Procesamiento
-1.  **Carga:** El usuario sube archivos a través del formulario simple (UI).
-2.  **Validación de Bucket:** Opcional al iniciar; no bloquea el arranque. Si falla, se prioriza el modo local.
-3.  **Procesamiento:** 
-    *   Extracción, Chunking, Generación de descripciones, Embeddings (usando `google-generativeai` SDK).
-    *   Almacenamiento en **ChromaDB Local** (mapeado a volumen Docker).
-4.  **Persistencia:** Si `GCS_BUCKET` está configurado, se sincroniza el índice de ChromaDB con el bucket GCS.
+```
+Usuario sube archivo (PDF / MD / imagen)
+  │
+  ▼
+Validación (tipo, tamaño)
+  │
+  ▼
+Extracción de contenido
+  ├── PDF     → PyMuPDF (texto por página + imágenes)
+  ├── MD      → texto plano
+  └── Imagen  → descripción generada por Gemini
+  │
+  ▼
+Chunking configurable
+  │
+  ▼
+Generación de embeddings (Gemini text-embedding-004  este valor es configurable)
+  │
+  ▼
+Almacenamiento en ChromaDB
+  │  (metadatos: archivo, página, chunk_index, tipo)
+  │
+  └── [Opcional] Sincronización a GCS
+```
 
-### 2.2. Consulta RAG (Multimodal)
-1.  **Retrieval:** Búsqueda semántica en ChromaDB.
-2.  **Augmentation:** Recuperación de contexto.
-3.  **Generation:** Consulta vía `google-generativeai` SDK.
+## 3. Flujo de consulta RAG
 
-## 3. Componentes Técnicos
+```
+Pregunta del usuario
+  │
+  ▼
+Generación de embedding de la query (Gemini)
+  │
+  ▼
+Búsqueda por similitud coseno en ChromaDB (top-k chunks)
+  │
+  ▼
+Construcción del prompt con contexto recuperado
+  │
+  ▼
+Generación con Gemini Flash (gemini-1.5-flash este valor es configurable en pantalla)
+  │
+  ▼
+Respuesta + lista de fuentes citadas (archivo, página)
+```
 
-*   **Frontend:** Integrado en FastAPI mediante plantillas Jinja2. *Nota: La UI no solicita ni almacena API Keys, estas se gestionan exclusivamente en el backend mediante variables de entorno.*
-*   **Backend:** FastAPI con gestión de paquetes `uv`. Instrumentación de métricas mediante `prometheus-fastapi-instrumentator`.
-*   **Persistencia:** ChromaDB local (persistido en volumen Docker mapeado `-v`). La validación del bucket se realiza de forma no bloqueante; si falla, el backend opera en modo local persistente.
-*   **Migración:** Uso explícito de `google-generativeai` SDK.
+## 4. Componentes técnicos
 
-## 4. Infraestructura y Despliegue (GCP/Local)
+### Backend (FastAPI)
+- Gestión de paquetes: `uv` con lockfile (`uv.lock`).
+- Métricas: `prometheus-fastapi-instrumentator` expone `/metrics`.
+- Logging: estructurado (JSON) para compatibilidad con Cloud Run.
+- GCS: validación no bloqueante al arranque. Si `GCS_BUCKET` no está definido o falla, el sistema opera en modo local sin degradación.
 
-*   **GitHub Actions:** Automatiza el build/push a GitHub Container Registry (GHCR), incluye `ruff check` y tag por SHA.
-*   **Cloud Run:** Despliegue del contenedor.
-*   **Gestión IAM:** Se requiere si se configura sincronización con GCS (`roles/storage.admin`).
+### Persistencia
+- ChromaDB en modo persistente apuntando a `/data/chroma` dentro del contenedor.
+- El usuario monta el volumen con `-v chroma_data:/data/chroma` para preservar el índice entre sesiones.
+- Sin volumen: el índice se pierde al detener el contenedor (comportamiento válido para evaluación).
 
-## 5. Gestión de Documentos
-La eliminación implica:
-1.  `DELETE /documents/{doc_id}`.
-2.  Borrado en ChromaDB + GCS (si aplica).
-3.  Reindexación y respuesta síncrona.
+### Estados de documento
+```
+UPLOADED → PROCESSING → INDEXED
+                      → ERROR
+```
+
+## 5. CI/CD
+
+```
+git push
+  │
+  ▼
+GitHub Actions
+  ├── ruff check .          (lint)
+  ├── pytest                (tests unitarios)
+  └── docker build + push
+        ├── ghcr.io/USER/REPO:latest
+        └── ghcr.io/USER/REPO:${{ github.sha }}
+```
+
+La imagen en GHCR es pública. El profesor hace `docker pull` sin autenticación.
+
+## 6. Despliegue en Cloud Run
+
+```bash
+gcloud run deploy rag-platform \
+  --image ghcr.io/USER/REPO:latest \
+  --set-env-vars GEMINI_API_KEY=... \
+  --port 8000
+```
+
+IAM requerida solo si se activa GCS: `roles/storage.admin` en la cuenta de servicio de Cloud Run.
+
+## 7. Estructura de carpetas
+
+```
+/
+├── app/
+│   └── backend/
+│       ├── main.py              # FastAPI app, rutas
+│       ├── rag/
+│       │   ├── ingest.py        # Pipeline de ingesta
+│       │   ├── retrieval.py     # Búsqueda semántica
+│       │   └── generation.py    # Llamada a Gemini
+│       ├── storage/
+│       │   ├── chroma.py        # Cliente ChromaDB
+│       │   └── gcs.py           # Cliente GCS (opcional)
+│       └── templates/           # Jinja2 HTML
+├── tests/
+├── Dockerfile
+├── .github/workflows/ci.yml
+├── pyproject.toml               # uv + ruff config
+├── uv.lock
+├── .gitignore
+├── .dockerignore
+└── README.md
+```

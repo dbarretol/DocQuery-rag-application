@@ -1,46 +1,60 @@
-# INITIAL-IDEA.md: Intelligent Multimodal RAG Platform (MVP Evaluable)
+# INITIAL-IDEA.md: Intelligent Multimodal RAG Platform
 
 ## 1. Descripción general
-Plataforma web para consulta inteligente de documentos. Permite indexar, consultar y gestionar documentos mixtos (PDF, MD, Imágenes) utilizando capacidades multimodales de Gemini. Arquitectura optimizada para ser evaluable mediante un solo `docker run` sin dependencias externas obligatorias.
 
-## 2. Objetivo y caso de uso
-**Objetivo:** Explorar corpus documentales mediante RAG multimodal, garantizando trazabilidad y contexto visual.
-**Caso de uso:** Análisis rápido de informes (ej. 10-K) con indexación persistente local (ChromaDB mediante volumen Docker) y sincronización opcional con GCS.
+Plataforma web para consulta inteligente de documentos mixtos (PDF, Markdown, imágenes) mediante RAG multimodal con Gemini. El sistema indexa documentos localmente con ChromaDB y responde preguntas citando las fuentes relevantes.
 
-## 3. Arquitectura de alto nivel
-*   **Frontend/Backend:** Integrados en un solo servicio FastAPI usando plantillas Jinja2 (sin Node.js).
-*   **Almacenamiento:** ChromaDB local (persistido en volumen Docker mapeado). Sincronización opcional con GCS.
-*   **IA/ML:** Gemini API (SDK `google-generativeai`).
-*   **Despliegue:** Cloud Run (contenedor Docker), CI/CD vía GitHub Actions, GHCR y linting con Ruff.
+Diseñada para ser evaluable con un solo `docker run -e GEMINI_API_KEY=...`, sin dependencias externas obligatorias.
 
-## 4. Componentes y Flujo
-*   **Gestión GCS (Opcional):** Configuración de bucket GCS. Validación al iniciar (No bloqueante). Si falla, opera en modo local puro.
-*   **Ingestión:** Subida de archivos -> Procesamiento (Chunking, Embeddings mediante Gemini SDK) -> Almacenamiento en ChromaDB.
-*   **Gestión Documental:** Interfaz para listar, ver y eliminar archivos indexados.
+## 2. Caso de uso
 
-## 5. Tecnologías
-*   **Backend:** Python (`uv`), FastAPI, Jinja2, `google-generativeai`, `chromadb`, `ruff` (linting), `prometheus-fastapi-instrumentator` (métricas).
-*   **Despliegue:** Docker (multi-stage), GitHub Actions, GHCR, Cloud Run.
+Análisis de informes técnicos o financieros: el usuario sube documentos, los indexa, y hace preguntas en lenguaje natural. El sistema responde con referencias a las secciones fuente.
 
-## 6. Infraestructura y despliegue
-### Flujos
-*   **Ingestión:** `UI` -> `FastAPI Backend` -> `Procesamiento/Embeddings (SDK google-generativeai)` -> `ChromaDB` -> `Sincronización GCS (Opcional)`.
-*   **Consultas RAG:** `User Query` -> `Retrieval (ChromaDB)` -> `Gemini Generation` -> `Respuesta + Citas`.
+## 3. Arquitectura
 
-### CI/CD
-1. `Push` a GitHub -> GitHub Actions (Linter Ruff + Tests) -> Compila Docker.
-2. Imagen enviada a GHCR con tags `:latest` y `:${{ github.sha }}`.
-3. Despliegue en Cloud Run (o ejecución local).
+- **Frontend/Backend:** Un solo servicio FastAPI con UI en Jinja2. Sin Node.js.
+- **Almacenamiento vectorial:** ChromaDB persistido en volumen Docker (`-v`).
+- **IA/ML:** Gemini API via SDK `google-genai` (embeddings + generación).
+- **CI/CD:** GitHub Actions → build → push a GHCR con tags `:latest` y `:SHA`.
+- **Despliegue:** Cloud Run (imagen pública en GHCR).
 
-### Variables y Permisos
-*   **Variables:** `API_KEY` (Gemini), `GCS_BUCKET` (opcional). 
-    *   *Nota: La API Key se inyecta exclusivamente vía variable de entorno en el contenedor, nunca a través de la UI.*
-*   **IAM:** Si se usa GCS, cuenta de servicio con `roles/storage.admin`.
+## 4. Flujos principales
 
-## 7. Cumplimiento con la Rúbrica
-| Criterio | Estrategia de Cumplimiento |
-| :--- | :--- |
-| **Arranca con 1 docker run** | Imagen autocontenida; modo local offline por defecto; uso de volúmenes para persistencia. |
-| **IA funcional** | RAG multimodal con SDK `google-generativeai`. |
-| **README claro** | Guía de ejecución con comando `docker run -v` para persistencia; ejemplo de entrada/salida. |
-| **Puntos extra** | Dockerfile multi-stage, `uv`, GitHub Actions (tags SHA + lint), métricas (Prometheus). |
+**Ingestión:**
+`Subida de archivo` → `Extracción de texto/imágenes` → `Chunking` → `Embeddings (Gemini)` → `ChromaDB`
+
+**Consulta RAG:**
+`Pregunta` → `Búsqueda semántica (ChromaDB)` → `Contexto recuperado` → `Gemini genera respuesta` → `Respuesta + citas`
+
+## 5. Stack tecnológico
+
+| Capa | Tecnología |
+|---|---|
+| Runtime | Python 3.12, `uv` |
+| API | FastAPI, Uvicorn |
+| UI | Jinja2 templates |
+| Vector store | ChromaDB (local, volumen Docker) |
+| IA | `google-generativeai` SDK |
+| Métricas | `prometheus-fastapi-instrumentator` |
+| Lint | `ruff` |
+| Tests | `pytest` |
+| CI/CD | GitHub Actions |
+| Registro | GHCR |
+| Despliegue | Cloud Run |
+| GCS | Opcional (sincronización de índice) |
+
+## 6. Variables de entorno
+
+| Variable | Obligatoria | Descripción |
+|---|---|---|
+| `GEMINI_API_KEY` | Sí | Clave de API de Gemini. Solo en runtime, nunca en la imagen. |
+| `GCS_BUCKET` | No | Bucket GCS para sincronización opcional del índice. |
+
+## 7. Cumplimiento de rúbrica
+
+| Criterio | Pts | Estrategia |
+|---|---|---|
+| Arranca con un solo `docker run` | 6 | Imagen autocontenida; ChromaDB local por defecto; GCS no bloqueante. |
+| IA funcional | 6 | RAG multimodal con Gemini SDK; retrieval semántico + generación con citas. |
+| README claro + 1 ejemplo | 3 | README con comando exacto, volumen, y ejemplo de entrada/salida real. |
+| Puntos extra | 5 | Dockerfile multi-stage + uv, GHCR, GitHub Actions (lint + SHA tag), ruff, pytest, /metrics. |
