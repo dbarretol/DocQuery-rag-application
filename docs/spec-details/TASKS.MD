@@ -20,18 +20,18 @@ Entorno: Python con `uv`, PowerShell en Windows.
 
 ## Fase 2: Backend core
 
-- [ ] `uv add fastapi uvicorn[standard] python-multipart jinja2`.
-- [ ] `uv add chromadb google-generativeai pymupdf`.
-- [ ] `uv add prometheus-fastapi-instrumentator`.
-- [ ] `uv add google-cloud-storage` (para modo GCS opcional).
-- [ ] Implementar `main.py`: app FastAPI con rutas stub, logging JSON, middleware CORS.
-- [ ] Implementar `/health` → `{"status": "ok"}`.
-- [ ] Implementar `/metrics` con `prometheus-fastapi-instrumentator`.
-- [ ] Implementar endpoint `POST /upload` (stub: recibe archivo, valida tipo/tamaño, devuelve 202).
-- [ ] Implementar endpoint `GET /documents` (stub: devuelve lista vacía).
-- [ ] Implementar endpoint `DELETE /documents/{doc_id}` (stub).
-- [ ] Implementar endpoint `POST /chat` (stub: recibe `{"question": "..."}`, devuelve `{"answer": "stub"}`).
-- [ ] Servir UI básica con Jinja2 (página principal con formulario de chat y upload).
+- [x] `uv add fastapi uvicorn[standard] python-multipart jinja2`.
+- [x] `uv add chromadb google-genai pymupdf`.
+- [x] `uv add prometheus-fastapi-instrumentator`.
+- [x] `uv add google-cloud-storage` (para modo GCS opcional).
+- [x] Implementar `main.py`: app FastAPI con rutas stub, logging JSON, middleware CORS.
+- [x] Implementar `/health` → `{"status": "ok"}`.
+- [x] Implementar `/metrics` con `prometheus-fastapi-instrumentator`.
+- [x] Implementar endpoint `POST /upload` (stub: recibe archivo, valida tipo/tamaño, devuelve 202).
+- [x] Implementar endpoint `GET /documents` (stub: devuelve lista vacía).
+- [x] Implementar endpoint `DELETE /documents/{doc_id}` (stub).
+- [x] Implementar endpoint `POST /chat` (stub: recibe `{"question": "..."}`, devuelve `{"answer": "stub"}`).
+- [x] Servir UI básica con Jinja2 (página principal con formulario de chat y upload).
 
 **Validación:** `uv run uvicorn app.backend.main:app --reload` arranca sin errores; `/health` responde 200; `/metrics` responde 200.
 
