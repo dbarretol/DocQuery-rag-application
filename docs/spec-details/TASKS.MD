@@ -11,12 +11,13 @@ Este documento define los paquetes de trabajo sistemáticos para construir la pl
 - [ ] **Validación:** Verificar entorno virtual activo y ejecución de `ruff check .`.
 
 ## Fase 2: Backend Core (FastAPI & GCS Opcional)
-- [ ] Configurar FastAPI y dependencias (`uv add fastapi uvicorn google-cloud-storage chromadb google-generativeai`).
-- [ ] Implementar endpoint de consulta RAG (`POST /chat`).
+- [ ] Configurar FastAPI y dependencias (`uv add fastapi uvicorn google-cloud-storage chromadb google-generativeai prometheus-fastapi-instrumentator`).
+- [ ] Implementar stub del endpoint de consulta RAG (`POST /chat`) (lógica RAG en fase 3).
 - [ ] Implementar servicios de subida/eliminación/listado de documentos.
 - [ ] Implementar validación de bucket GCS (no bloqueante para el arranque).
 - [ ] Implementar validación de tipos, tamaños y límites de carga.
-- [ ] Implementar endpoint `/health` y `/metrics`.
+- [ ] Implementar endpoint `/health`.
+- [ ] Implementar endpoint `/metrics` usando `prometheus-fastapi-instrumentator`.
 - [ ] Implementar readiness y liveness checks.
 - [ ] **Validación:** Tests de integración para endpoints de GCS (ejecución solo en CI).
 
@@ -33,6 +34,7 @@ Este documento define los paquetes de trabajo sistemáticos para construir la pl
 - [ ] Implementar estados del documento (Uploaded, Processing, Indexed, Error).
 - [ ] Implementar sincronización y reindexación manual.
 - [ ] Implementar recuperación de fuentes (trazabilidad y metadatos).
+- [ ] **Finalizar integración del endpoint de consulta RAG (`POST /chat`) con lógica RAG real.**
 - [ ] **Validación:** Tests unitarios (mocking), verificación de persistencia local, verificación de trazabilidad.
 
 ## Fase 4: Frontend (Jinja2 Templates)

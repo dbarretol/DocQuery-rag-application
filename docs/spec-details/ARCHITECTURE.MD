@@ -12,6 +12,7 @@ graph TD
     subgraph "Containerized RAG Core"
         API --> ChromaDB[(ChromaDB - Volumen Docker)]
         API --> GCS[GCS Client (Opcional)]
+        API --> Metrics[Prometheus Instrumentator]
     end
     
     subgraph "External AI"
@@ -42,10 +43,10 @@ graph TD
 
 ## 3. Componentes Técnicos
 
-*   **Frontend:** Integrado en FastAPI mediante plantillas Jinja2 (sin JS externo complejo). *Nota: La UI no solicita ni almacena API Keys, estas se gestionan exclusivamente en el backend mediante variables de entorno.*
-*   **Backend:** FastAPI con gestión de paquetes `uv`.
+*   **Frontend:** Integrado en FastAPI mediante plantillas Jinja2. *Nota: La UI no solicita ni almacena API Keys, estas se gestionan exclusivamente en el backend mediante variables de entorno.*
+*   **Backend:** FastAPI con gestión de paquetes `uv`. Instrumentación de métricas mediante `prometheus-fastapi-instrumentator`.
 *   **Persistencia:** ChromaDB local (persistido en volumen Docker mapeado `-v`). La validación del bucket se realiza de forma no bloqueante; si falla, el backend opera en modo local persistente.
-*   **Código:** Migración explícita a `google-generativeai` SDK.
+*   **Migración:** Uso explícito de `google-generativeai` SDK.
 
 ## 4. Infraestructura y Despliegue (GCP/Local)
 

@@ -19,7 +19,7 @@ Plataforma web para consulta inteligente de documentos. Permite indexar, consult
 *   **Gestión Documental:** Interfaz para listar, ver y eliminar archivos indexados.
 
 ## 5. Tecnologías
-*   **Backend:** Python (`uv`), FastAPI, Jinja2, `google-generativeai`, `chromadb`, `ruff` (linting).
+*   **Backend:** Python (`uv`), FastAPI, Jinja2, `google-generativeai`, `chromadb`, `ruff` (linting), `prometheus-fastapi-instrumentator` (métricas).
 *   **Despliegue:** Docker (multi-stage), GitHub Actions, GHCR, Cloud Run.
 
 ## 6. Infraestructura y despliegue
@@ -33,7 +33,8 @@ Plataforma web para consulta inteligente de documentos. Permite indexar, consult
 3. Despliegue en Cloud Run (o ejecución local).
 
 ### Variables y Permisos
-*   **Variables:** `API_KEY` (Gemini), `GCS_BUCKET` (opcional).
+*   **Variables:** `API_KEY` (Gemini), `GCS_BUCKET` (opcional). 
+    *   *Nota: La API Key se inyecta exclusivamente vía variable de entorno en el contenedor, nunca a través de la UI.*
 *   **IAM:** Si se usa GCS, cuenta de servicio con `roles/storage.admin`.
 
 ## 7. Cumplimiento con la Rúbrica
@@ -42,4 +43,4 @@ Plataforma web para consulta inteligente de documentos. Permite indexar, consult
 | **Arranca con 1 docker run** | Imagen autocontenida; modo local offline por defecto; uso de volúmenes para persistencia. |
 | **IA funcional** | RAG multimodal con SDK `google-generativeai`. |
 | **README claro** | Guía de ejecución con comando `docker run -v` para persistencia; ejemplo de entrada/salida. |
-| **Puntos extra** | Dockerfile multi-stage, `uv`, GitHub Actions (tags SHA + lint), logs/métricas. |
+| **Puntos extra** | Dockerfile multi-stage, `uv`, GitHub Actions (tags SHA + lint), métricas (Prometheus). |
