@@ -1,63 +1,56 @@
-# INITIAL-IDEA.md: Intelligent Multimodal RAG Platform
+# INITIAL-IDEA.md: Intelligent Multimodal RAG Platform (GCP Edition)
 
-## 1. Descripción general de la aplicación
-Una plataforma web para la consulta inteligente de documentos (PDF, Markdown, Imágenes). La aplicación permite a los usuarios cargar archivos, configurar el comportamiento del modelo de IA y realizar preguntas complejas sobre el contenido, obteniendo respuestas fundamentadas con citas directas a las fuentes utilizadas (texto o imágenes).
+## 1. Descripción general
+Plataforma web para consulta inteligente de documentos almacenados en Google Cloud Storage (GCS). Permite indexar, consultar y gestionar documentos mixtos (PDF, MD, Imágenes) utilizando capacidades multimodales de Gemini en GCP.
 
 ## 2. Objetivo y caso de uso
-**Objetivo:** Permitir a los usuarios explorar grandes corpus de documentos mixtos (texto + tablas/imágenes) sin necesidad de leerlos completos, utilizando las capacidades multimodales de Gemini.
-**Caso de uso:** Análisis rápido de informes financieros (como los archivos 10-K del repositorio legado) u otros documentos técnicos donde la información crítica reside tanto en párrafos de texto como en tablas, gráficos y diagramas.
+**Objetivo:** Explorar corpus documentales en GCS mediante RAG multimodal, garantizando trazabilidad y manejo de contexto visual.  
+**Caso de uso:** Análisis corporativo de informes financieros y técnicos alojados en GCS, con indexación centralizada y persistente.
 
 ## 3. Arquitectura de alto nivel
-La aplicación seguirá una arquitectura cliente-servidor:
-*   **Frontend:** Interfaz web sencilla (React o Angular + Vanilla CSS) para carga de archivos, configuración y chat.
-*   **Backend:** API RESTful (FastAPI) para gestionar el procesamiento, la indexación y la comunicación con el modelo de IA.
-*   **Almacenamiento:** Sistema de archivos local para documentos originales/imágenes y una base de datos vectorial simple o almacenamiento local estructurado (metadata JSON/Parquet) para los índices y embeddings.
-*   **IA/ML:** Gemini API (Vertex AI) para generación de descripciones de imágenes, embeddings y respuestas a consultas.
+*   **Frontend:** Next.js (TypeScript) para la interfaz de usuario.
+*   **Backend:** FastAPI en Python (gestión `uv`).
+*   **Almacenamiento de Documentos:** Google Cloud Storage (GCS).
+*   **IA/ML:** Gemini API (Vertex AI).
+*   **Despliegue:** Cloud Run (contenedor Docker), CI/CD vía Cloud Build y Artifact Registry.
 
-## 4. Componentes principales
-*   **Upload Manager:** Zona drag & drop para carga de documentos.
-*   **Config Service:** Panel para gestionar las claves de API y seleccionar el modelo (por ej. `gemini-2.5-flash`).
-*   **Indexing Engine:** Extrae texto/imágenes, genera embeddings y construye el índice semántico reutilizando la lógica de `intro_multimodal_rag_utils.py`.
-*   **RAG Engine:** Realiza la búsqueda semántica, recupera el contexto (texto + imágenes pertinentes) y genera la respuesta con citas.
+## 4. Componentes y Flujo
+*   **Gestión GCS:** Interfaz para definir bucket público. Validación de acceso al iniciar.
+*   **Ingestión:** El usuario sube archivos -> Se guardan en GCS -> Se disparan funciones de procesamiento -> Indexación en memoria/persistente.
+*   **Gestión Documental:** Interfaz para listar, ver y eliminar archivos indexados (sincronizando GCS y el índice).
 
-## 5. Flujo de usuario
-1.  **Configuración:** El usuario ingresa la API Key y configura el modelo.
-2.  **Carga:** Arrastra los documentos a la zona de carga.
-3.  **Procesamiento:** El backend procesa los archivos, genera embeddings y los indexa.
-4.  **Consulta:** El usuario escribe una pregunta en el chat.
-5.  **Respuesta:** El sistema presenta la respuesta con fuentes citadas y sugiere preguntas relacionadas.
+## 5. Tecnologías
+*   **Backend:** Python (`uv`), FastAPI, Google Cloud Storage Client.
+*   **Frontend:** Next.js (TypeScript).
+*   **IA:** Vertex AI (Gemini Flash), Multimodal Embeddings.
+*   **Despliegue:** Docker, Cloud Build, Artifact Registry, Cloud Run.
 
-## 6. Tecnologías recomendadas
-*   **Lenguaje:** Python (gestionado con `uv`).
-*   **API Framework:** FastAPI.
-*   **Frontend:** React (TypeScript).
-*   **Embeddings & LLM:** Google Vertex AI / Gemini API.
-*   **Procesamiento PDF:** PyMuPDF (`fitz`).
-*   **Deployment:** Docker (multi-stage build).
+## 6. Infraestructura y despliegue en Google Cloud
+### Componentes GCP
+*   **Cloud Storage:** Almacenamiento centralizado de documentos para ingestión.
+*   **Artifact Registry:** Almacén de imágenes Docker.
+*   **Cloud Build:** Automatización de CI/CD (build y push).
+*   **Cloud Run:** Plataforma de ejecución escalable del servicio.
 
-## 7. Estrategia de procesamiento e indexación
-*   Reutilizar la lógica de `intro_multimodal_rag_utils.py` para la extracción de texto, fragmentación (chunking), y extracción de imágenes.
-*   Utilizar `TextEmbeddingModel` para texto y `MultiModalEmbeddingModel` para imágenes.
-*   Almacenar metadatos en un formato persistente (parquets o JSON estructurado) para evitar reprocesamiento.
+### Flujos
+*   **Ingestión:** `UI (Config Bucket)` -> `Backend (Validación GCP/GCS)` -> `Upload GCS` -> `Procesamiento/Embeddings` -> `Actualización de Índice`.
+*   **Consultas RAG:** `User Query` -> `Retrieval (GCS context)` -> `Augmentation` -> `Gemini Generation` -> `Citas`.
+*   **Gestión Documentos:** El backend expone endpoints para listar/eliminar en GCS y actualizar el índice local (JSON/Parquet).
 
-## 8. Estrategia de generación de respuestas y citación
-*   **Retrieval:** Búsqueda por similitud de coseno sobre embeddings de usuario comparados con los embeddings almacenados.
-*   **Augmentation:** Recuperar fragmentos de texto y descripciones de imágenes (previamente generadas por Gemini).
-*   **Generation:** Enviar al modelo `user_query + context (textos + imágenes) + instrucciones de citación`.
-*   **Citations:** El sistema devolverá un JSON estructurado indicando qué página, archivo y fragmento (o imagen) se usó, para que la UI renderice la fuente visiblemente.
+### CI/CD
+1.  `Push` a GitHub -> Cloud Build detecta cambios.
+2.  Cloud Build compila la imagen Docker.
+3.  Imagen enviada a Artifact Registry.
+4.  Cloud Run despliega automáticamente la nueva versión.
 
-## 9. Consideraciones de despliegue mediante Docker
-*   Dockerfile multietapa:
-    *   *Build:* Instalar dependencias mediante `uv`.
-    *   *Runtime:* Imagen base ligera (Python slim), copiar solo el entorno virtual y el código fuente.
-*   Ejecución: `docker run --rm -p 8000:8000 -e API_KEY=... TU_IMAGEN`
-*   Variables de entorno para la configuración de la API.
+### Variables y Permisos
+*   **Variables:** `BUCKET_NAME`, `PROJECT_ID`, `GCP_REGION`, `API_KEY` (secret manager).
+*   **IAM:** La cuenta de servicio de Cloud Run requiere `roles/storage.objectViewer` (o Admin según alcance).
 
-## 10. Cumplimiento con la Rúbrica (@docs\RUBRIC-DETAILS.md)
-
+## 7. Cumplimiento con la Rúbrica
 | Criterio | Estrategia de Cumplimiento |
 | :--- | :--- |
-| **Arranca con 1 docker run** | Dockerfile optimizado; README con comandos claros. |
-| **IA funcional y pertinente** | Uso de Gemini API con RAG multimodal probado en el lab. |
-| **README claro** | Estructura detallada: requisitos, build, run, ejemplo. |
-| **Puntos extra** | Estructura Git limpia, `uv` lock, `pytest`, `ruff`. |
+| **Arranca con 1 docker run** | Imagen en Cloud Run/Docker; README con comandos. |
+| **IA funcional** | RAG multimodal con Gemini en Vertex AI. |
+| **README claro** | Guía de configuración GCP, despliegue y uso. |
+| **Puntos extra** | Dockerfile multi-stage, `uv`, CI/CD (Cloud Build). |
