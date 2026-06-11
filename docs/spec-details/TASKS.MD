@@ -41,7 +41,7 @@ Entorno: Python con `uv`, PowerShell en Windows.
 
 > Esta es la fase crítica. Completar antes de tocar Docker o CI/CD.
 
-- [ ] **`storage/chroma.py`:** cliente ChromaDB apuntando a `/data/chroma` (configurable vía env `CHROMA_PATH`, default `./data/chroma` para desarrollo local).
+- [x] **`storage/chroma.py`:** cliente ChromaDB apuntando a `/data/chroma` (configurable vía env `CHROMA_PATH`, default `./data/chroma` para desarrollo local).
 - [ ] **`rag/ingest.py`:** pipeline completo:
   - [ ] Extracción PDF con PyMuPDF (texto por página + imágenes a base64).
   - [ ] Extracción Markdown (texto plano).
