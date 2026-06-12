@@ -12,7 +12,12 @@ from app.backend.config_loader import get_generation_model, get_embedding_model
 logger = logging.getLogger("uvicorn")
 
 # Configure Gemini
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", "dummy_key"))
+api_key = os.getenv("GEMINI_API_KEY")
+logger.info(f"API Key present: {bool(api_key)}")
+if api_key:
+    logger.info(f"API Key prefix: {api_key[:5]}...")
+
+client = genai.Client(api_key=api_key or "dummy_key")
 
 def chunk_text(text: str, chunk_size: int = 500) -> List[str]:
     """Simple chunking by character count (approx tokens)."""
