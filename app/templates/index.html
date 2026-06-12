@@ -40,9 +40,14 @@
         <!-- Main: chat -->
         <main class="main">
             <div class="chat-header">
-                <div>
+                <div style="flex: 1;">
                     <div class="chat-header-title">Consulta tus documentos</div>
                     <div class="chat-header-sub">Hazle preguntas en lenguaje natural</div>
+                </div>
+                <div style="text-align: right;">
+                    <div id="headerModelInfo" style="font-size: 11px; color: var(--text-lo); background: var(--indigo-dim); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border);">
+                        AI: <span id="headerGenModel" style="font-weight: 600; color: var(--indigo);">...</span>
+                    </div>
                 </div>
             </div>
 
@@ -82,8 +87,87 @@
         </main>
 
 <script>
+document.addEventListener('DOMContentLoaded', () => {
     /* ── State ── */
     const docs = [];
+    let config = { 
+        generation_model: localStorage.getItem('gen_model') || '', 
+        embedding_model: localStorage.getItem('emb_model') || '' 
+    };
+
+    /* ── Settings Management ── */
+    const btnOpenSettings  = document.getElementById('btnOpenSettings');
+    const btnCloseSettings = document.getElementById('btnCloseSettings');
+    const modalSettings    = document.getElementById('modalSettings');
+    const btnSaveSettings  = document.getElementById('btnSaveSettings');
+    const selectGenModel   = document.getElementById('selectGenModel');
+    const selectEmbModel   = document.getElementById('selectEmbModel');
+    const currentGenModel  = document.getElementById('currentGenModel');
+    const currentEmbModel  = document.getElementById('currentEmbModel');
+
+    btnOpenSettings.addEventListener('click', () => modalSettings.classList.add('active'));
+    btnCloseSettings.addEventListener('click', () => modalSettings.classList.remove('active'));
+    modalSettings.addEventListener('click', (e) => { if(e.target === modalSettings) modalSettings.classList.remove('active'); });
+
+    async function loadSettings() {
+        console.log('Fetching config...');
+        try {
+            const res = await fetch('/config');
+            console.log('Config response status:', res.status);
+            if (!res.ok) {
+                console.error('Config fetch failed:', res.statusText);
+                return;
+            }
+            const data = await res.json();
+            console.log('Config data received:', data);
+            
+            // Populate select options
+            if (data.models && data.models.generation && data.models.generation.options) {
+                selectGenModel.innerHTML = data.models.generation.options.map(opt => 
+                    `<option value="${opt.name}">${opt.name} (${opt.cost})</option>`
+                ).join('');
+            }
+            
+            if (data.models && data.models.embeddings && data.models.embeddings.options) {
+                selectEmbModel.innerHTML = data.models.embeddings.options.map(opt => 
+                    `<option value="${opt.name}">${opt.name}</option>`
+                ).join('');
+            }
+
+            // Set defaults if not in localStorage
+            if (!config.generation_model && data.models && data.models.generation) 
+                config.generation_model = data.models.generation.default;
+            if (!config.embedding_model && data.models && data.models.embeddings) 
+                config.embedding_model = data.models.embeddings.default;
+
+            updateSettingsUI();
+        } catch (err) {
+            console.error('Error loading config:', err);
+        }
+    }
+
+    function updateSettingsUI() {
+        currentGenModel.textContent = config.generation_model;
+        currentEmbModel.textContent = config.embedding_model;
+        
+        const headerGenModel = document.getElementById('headerGenModel');
+        if (headerGenModel) headerGenModel.textContent = config.generation_model;
+
+        // Update selects if they were changed elsewhere
+        selectGenModel.value = config.generation_model;
+        selectEmbModel.value = config.embedding_model;
+    }
+
+    btnSaveSettings.addEventListener('click', () => {
+        config.generation_model = selectGenModel.value;
+        config.embedding_model = selectEmbModel.value;
+        localStorage.setItem('gen_model', config.generation_model);
+        localStorage.setItem('emb_model', config.embedding_model);
+        updateSettingsUI();
+        modalSettings.classList.remove('active');
+    });
+
+    loadSettings();
 
     /* ── Upload ── */
     const fileInput  = document.getElementById('fileInput');
@@ -126,6 +210,8 @@
 
         const formData = new FormData();
         formData.append('file', file);
+        if (config.generation_model) formData.append('generation_model', config.generation_model);
+        if (config.embedding_model) formData.append('embedding_model', config.embedding_model);
 
         try {
             const res = await fetch('/upload', { method: 'POST', body: formData });
@@ -200,11 +286,11 @@
         });
     }
 
-    function removeDoc(id) {
+    window.removeDoc = function(id) {
         const idx = docs.findIndex(d => d.id === id);
         if (idx !== -1) docs.splice(idx, 1);
         renderDocList();
-    }
+    };
 
     function formatBytes(b) {
         if (b < 1024) return b + ' B';
@@ -253,7 +339,10 @@
             const res = await fetch('/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ question })
+                body: JSON.stringify({ 
+                    question, 
+                    generation_model: config.generation_model 
+                })
             });
             const data = await res.json();
             typingEl.remove();
@@ -296,14 +385,15 @@
         return msg;
     }
 
-    function setQuery(q) {
+    window.setQuery = function(q) {
         chatInput.value = q;
         chatInput.focus();
         chatInput.dispatchEvent(new Event('input'));
-    }
+    };
 
     function escHtml(str) {
         return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
+});
 </script>
 {% endblock %}

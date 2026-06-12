@@ -556,6 +556,139 @@
         .btn-send:disabled { opacity: .4; cursor: default; }
         .btn-send svg { width: 18px; height: 18px; }
 
+        /* ── Modal ── */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(2px);
+        }
+
+        .modal-overlay.active { display: flex; }
+
+        .modal {
+            background: var(--white);
+            width: 100%;
+            max-width: 450px;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+            animation: modalIn 200ms ease-out;
+        }
+
+        @keyframes modalIn {
+            from { transform: translateY(10px); opacity: 0; }
+            to   { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-hi);
+        }
+
+        .btn-close-modal {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-lo);
+            display: flex;
+            padding: 4px;
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .settings-group {
+            margin-bottom: 20px;
+        }
+
+        .settings-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-lo);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+
+        .settings-select {
+            width: 100%;
+            height: 40px;
+            padding: 0 12px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-family: inherit;
+            color: var(--text-hi);
+            background: var(--surface);
+            outline: none;
+            transition: border-color var(--transition);
+        }
+
+        .settings-select:focus { border-color: var(--indigo); }
+
+        .settings-hint {
+            font-size: 12px;
+            color: var(--text-lo);
+            margin-top: 6px;
+            line-height: 1.4;
+        }
+
+        .modal-footer {
+            padding: 16px 24px;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .btn-save-settings {
+            height: 36px;
+            padding: 0 20px;
+            background: var(--indigo);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background var(--transition);
+        }
+
+        .btn-save-settings:hover { background: #3A58E0; }
+
+        .btn-settings {
+            background: rgba(255,255,255,.1);
+            border: 1px solid rgba(255,255,255,.15);
+            color: #fff;
+            width: 34px;
+            height: 34px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background var(--transition);
+        }
+
+        .btn-settings:hover { background: rgba(255,255,255,.2); }
+        .btn-settings svg { width: 18px; height: 18px; }
+
         /* ── Scrollbar ── */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -600,9 +733,55 @@
                 <input type="text" id="gcsBucket" placeholder="GCS bucket name">
             </div>
             <div class="topbar-spacer"></div>
+            <button class="btn-settings" id="btnOpenSettings" title="Configuración de modelos">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </button>
         </header>
 
         {% block content %}{% endblock %}
+    </div>
+
+    <!-- Modal de Configuración -->
+    <div class="modal-overlay" id="modalSettings">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Configuración de Modelos</h2>
+                <button class="btn-close-modal" id="btnCloseSettings">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="20" height="20">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-group">
+                    <label class="settings-label">Modelo de Generación</label>
+                    <select class="settings-select" id="selectGenModel">
+                        <!-- Opciones cargadas dinámicamente -->
+                    </select>
+                    <p class="settings-hint">Modelo utilizado para responder preguntas y describir imágenes.</p>
+                </div>
+                <div class="settings-group">
+                    <label class="settings-label">Modelo de Embeddings</label>
+                    <select class="settings-select" id="selectEmbModel">
+                        <!-- Opciones cargadas dinámicamente -->
+                    </select>
+                    <p class="settings-hint">Modelo utilizado para indexar documentos. Los cambios solo afectan a nuevas subidas.</p>
+                </div>
+                <div class="settings-group" style="margin-bottom: 0;">
+                    <label class="settings-label">Estado Actual</label>
+                    <div style="font-size: 13px; color: var(--text-mid); background: var(--surface); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border);">
+                        <div><strong>Generación:</strong> <span id="currentGenModel">Cargando...</span></div>
+                        <div style="margin-top: 4px;"><strong>Embeddings:</strong> <span id="currentEmbModel">Cargando...</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-save-settings" id="btnSaveSettings">Guardar Cambios</button>
+            </div>
+        </div>
     </div>
 </body>
 </html>
