@@ -1,12 +1,10 @@
-import google.generativeai as genai
+from google import genai
 import os
 from app.backend.config_loader import get_generation_model
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-# Using dynamic configuration
-model = genai.GenerativeModel(get_generation_model())
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-def generate_answer(query: str, context: dict):
+def generate_answer(query: str, context: dict, model_name: str = None):
     # context structure from retrieval: {'documents': [[...]], 'metadatas': [[...]]}
     docs = context.get("documents", [[]])[0]
     metadatas = context.get("metadatas", [[]])[0]
@@ -16,8 +14,10 @@ def generate_answer(query: str, context: dict):
     
     for doc, meta in zip(docs, metadatas):
         # Format context: content + citation
-        formatted_context += f"Content: {doc}\nSource: {meta.get('filename')}, Page: {meta.get('page')}\n\n"
-        sources.append(f"{meta.get('filename')} (page {meta.get('page')})")
+        filename = meta.get('filename', 'Unknown')
+        page = meta.get('page', 'Unknown')
+        formatted_context += f"Content: {doc}\nSource: {filename}, Page: {page}\n\n"
+        sources.append(f"{filename} (page {page})")
         
     prompt = f"""Use the provided context to answer the question. 
 When citing, use the provided source information.
@@ -30,5 +30,11 @@ Question: {query}
 
 Answer:"""
     
-    response = model.generate_content(prompt)
+    model = model_name or get_generation_model()
+    
+    response = client.models.generate_content(
+        model=model,
+        contents=prompt
+    )
+    
     return {"answer": response.text, "sources": list(set(sources))}
