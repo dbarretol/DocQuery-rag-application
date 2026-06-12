@@ -110,8 +110,8 @@ html, body {
     display: flex;
     align-items: center;
     gap: 8px;
-    background: rgba(255,255,255,.1);
-    border: 1px solid rgba(255,255,255,.15);
+    background: var(--white);
+    border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     padding: 0 10px;
     height: 34px;
@@ -124,7 +124,7 @@ html, body {
 
 .bucket-input-wrap svg {
     width: 14px; height: 14px;
-    color: rgba(255,255,255,.5);
+    color: var(--text-lo);
     flex-shrink: 0;
 }
 
@@ -132,13 +132,13 @@ html, body {
     background: transparent;
     border: none;
     outline: none;
-    color: #fff;
+    color: var(--text-hi);
     font-size: 13px;
     font-family: 'Inter', sans-serif;
     width: 180px;
 }
 
-.bucket-input-wrap input::placeholder { color: rgba(255,255,255,.4); }
+.bucket-input-wrap input::placeholder { color: var(--text-lo); }
 
 .topbar-spacer { flex: 1; }
 
