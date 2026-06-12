@@ -64,14 +64,25 @@ document.addEventListener('DOMContentLoaded', () => {
         currentGenModel.textContent = config.generation_model;
         currentEmbModel.textContent = config.embedding_model;
         
+        // Header
         const headerGenModel = document.getElementById('headerGenModel');
         const headerModelDesc = document.getElementById('headerModelDesc');
         if (headerGenModel) headerGenModel.textContent = config.generation_model;
 
-        // Find and display description
         if (headerModelDesc && modelsConfig.generation && modelsConfig.generation.options) {
             const modelOpt = modelsConfig.generation.options.find(o => o.name === config.generation_model);
             headerModelDesc.textContent = modelOpt ? modelOpt.description : '';
+        }
+
+        // Sidebar Embeddings
+        const sidebarEmbModel = document.getElementById('sidebarEmbModel');
+        const sidebarEmbModelDesc = document.getElementById('sidebarEmbModelDesc');
+        
+        if (sidebarEmbModel) sidebarEmbModel.textContent = config.embedding_model;
+
+        if (sidebarEmbModelDesc && modelsConfig.embeddings && modelsConfig.embeddings.options) {
+            const embOpt = modelsConfig.embeddings.options.find(o => o.name === config.embedding_model);
+            sidebarEmbModelDesc.textContent = embOpt ? embOpt.description : '';
         }
 
         // Update selects if they were changed elsewhere
