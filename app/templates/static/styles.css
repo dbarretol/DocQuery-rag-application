@@ -4,6 +4,8 @@
     --navy-light: #2A4E7A;
     --indigo:     #4F6EF7;
     --indigo-dim: #EEF1FE;
+    --uni-red:    #800404;
+    --uni-yellow: #BFB48D;
     --surface:    #FAFBFC;
     --white:      #FFFFFF;
     --border:     #E4E7EC;
@@ -51,7 +53,7 @@ html, body {
 /* ── Topbar ── */
 .topbar {
     grid-area: topbar;
-    background: var(--navy);
+    background: var(--uni-red);
     display: flex;
     align-items: center;
     gap: 12px;
@@ -696,7 +698,7 @@ html, body {
 /* ── Footer ── */
 .app-footer {
     grid-column: 1 / -1;
-    background: var(--navy);
+    background: var(--uni-red);
     color: rgba(255, 255, 255, 0.7);
     padding: 16px 24px;
     text-align: center;
