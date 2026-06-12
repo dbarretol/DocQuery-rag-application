@@ -6,6 +6,7 @@ import logging
 import io
 from PIL import Image as PILImage
 from app.backend.storage.chroma import get_chroma_client
+from app.backend.storage.gcs import upload_index
 from app.backend.config_loader import get_generation_model, get_embedding_model
 
 logger = logging.getLogger("uvicorn")
@@ -81,6 +82,7 @@ async def ingest_document(file_path: str, filename: str):
                 )
         
         logger.info(f"Successfully indexed document: {filename}")
+        upload_index(os.getenv("CHROMA_PATH", "./data/chroma"))
         return "INDEXED"
         
     except Exception as e:

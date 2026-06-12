@@ -12,6 +12,7 @@ from pythonjsonlogger import json
 from app.backend.rag.ingest import ingest_document
 from app.backend.rag.retrieval import retrieve_context
 from app.backend.rag.generation import generate_answer
+from app.backend.storage.gcs import download_index
 
 # Setup JSON Logging for Cloud Run compatibility
 logger = logging.getLogger("uvicorn")
@@ -22,6 +23,10 @@ logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
 app = FastAPI(title="Multimodal RAG Platform")
+
+@app.on_event("startup")
+async def startup_event():
+    download_index(os.getenv("CHROMA_PATH", "./data/chroma"))
 
 Instrumentator().instrument(app).expose(app)
 

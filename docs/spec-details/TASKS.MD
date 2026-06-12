@@ -50,11 +50,11 @@ Entorno: Python con `uv`, PowerShell en Windows.
   - [x] Embeddings con gemini de Gemini SDK. (revisar .\docs\embeddings-gemini.md)
   - [x] Almacenamiento en ChromaDB con metadatos: `{filename, page, chunk_index, content_type}`.
   - [x] Manejo de estados: `UPLOADED → PROCESSING → INDEXED / ERROR`.
-- [ ] **`rag/retrieval.py`:** búsqueda semántica top-k en ChromaDB (default k=5).
-- [ ] **`rag/generation.py`:** construcción de prompt con contexto + llamada al modelo de generacion elegido por el usario + extracción de fuentes citadas.
-- [ ] **Integrar pipeline en `POST /upload`:** procesamiento asíncrono (background task de FastAPI).
-- [ ] **Integrar RAG en `POST /chat`:** retrieval + generation reales; respuesta incluye `{"answer": "...", "sources": [...]}`.
-- [ ] **`storage/gcs.py`:** sincronización opcional (descarga índice al arranque si `GCS_BUCKET` definido; sube tras indexar). No bloqueante: errores se loguean, no crashean el servidor.
+- [x] **`rag/retrieval.py`:** búsqueda semántica top-k en ChromaDB (default k=5).
+- [x] **`rag/generation.py`:** construcción de prompt con contexto + llamada al modelo de generacion elegido por el usario + extracción de fuentes citadas.
+- [x] **Integrar pipeline en `POST /upload`:** procesamiento asíncrono (background task de FastAPI).
+- [x] **Integrar RAG en `POST /chat`:** retrieval + generation reales; respuesta incluye `{"answer": "...", "sources": [...]}`.
+- [x] **`storage/gcs.py`:** sincronización opcional (descarga índice al arranque si `GCS_BUCKET` definido; sube tras indexar). No bloqueante: errores se loguean, no crashean el servidor.
 
 **Validación:** subir un PDF real, hacer una pregunta sobre su contenido, verificar que la respuesta es pertinente y cita fuentes.
 
