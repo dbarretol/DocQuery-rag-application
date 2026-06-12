@@ -20,6 +20,8 @@ document.addEventListener('DOMContentLoaded', () => {
     btnCloseSettings.addEventListener('click', () => modalSettings.classList.remove('active'));
     modalSettings.addEventListener('click', (e) => { if(e.target === modalSettings) modalSettings.classList.remove('active'); });
 
+    let modelsConfig = {}; // Store config locally
+
     async function loadSettings() {
         console.log('Fetching config...');
         try {
@@ -30,26 +32,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             const data = await res.json();
+            modelsConfig = data.models;
             console.log('Config data received:', data);
             
             // Populate select options
-            if (data.models && data.models.generation && data.models.generation.options) {
-                selectGenModel.innerHTML = data.models.generation.options.map(opt => 
+            if (modelsConfig && modelsConfig.generation && modelsConfig.generation.options) {
+                selectGenModel.innerHTML = modelsConfig.generation.options.map(opt => 
                     `<option value="${opt.name}">${opt.name} (${opt.cost})</option>`
                 ).join('');
             }
             
-            if (data.models && data.models.embeddings && data.models.embeddings.options) {
-                selectEmbModel.innerHTML = data.models.embeddings.options.map(opt => 
+            if (modelsConfig && modelsConfig.embeddings && modelsConfig.embeddings.options) {
+                selectEmbModel.innerHTML = modelsConfig.embeddings.options.map(opt => 
                     `<option value="${opt.name}">${opt.name}</option>`
                 ).join('');
             }
 
             // Set defaults if not in localStorage
-            if (!config.generation_model && data.models && data.models.generation) 
-                config.generation_model = data.models.generation.default;
-            if (!config.embedding_model && data.models && data.models.embeddings) 
-                config.embedding_model = data.models.embeddings.default;
+            if (!config.generation_model && modelsConfig && modelsConfig.generation) 
+                config.generation_model = modelsConfig.generation.default;
+            if (!config.embedding_model && modelsConfig && modelsConfig.embeddings) 
+                config.embedding_model = modelsConfig.embeddings.default;
 
             updateSettingsUI();
         } catch (err) {
@@ -62,7 +65,14 @@ document.addEventListener('DOMContentLoaded', () => {
         currentEmbModel.textContent = config.embedding_model;
         
         const headerGenModel = document.getElementById('headerGenModel');
+        const headerModelDesc = document.getElementById('headerModelDesc');
         if (headerGenModel) headerGenModel.textContent = config.generation_model;
+
+        // Find and display description
+        if (headerModelDesc && modelsConfig.generation && modelsConfig.generation.options) {
+            const modelOpt = modelsConfig.generation.options.find(o => o.name === config.generation_model);
+            headerModelDesc.textContent = modelOpt ? modelOpt.description : '';
+        }
 
         // Update selects if they were changed elsewhere
         selectGenModel.value = config.generation_model;
