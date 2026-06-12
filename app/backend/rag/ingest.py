@@ -32,7 +32,13 @@ async def describe_image(image_bytes: bytes, model_name: str = None) -> str:
     response = _generate()
     return response.text
 
+def set_status(filename: str, status: str):
+    status_path = os.path.join("data/uploads", f"{filename}.status")
+    with open(status_path, "w", encoding="utf-8") as f:
+        f.write(status)
+
 async def ingest_document(file_path: str, filename: str, generation_model: str = None, embedding_model: str = None):
+    set_status(filename, "PROCESSING")
     logger.info(f"Processing document: {filename} with models [gen: {generation_model}, emb: {embedding_model}]")
     
     client = get_client()
@@ -106,13 +112,17 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
                 embeddings=[embedding]
             )
         else:
+            set_status(filename, "ERROR: Unsupported file type")
             logger.warning(f"Unsupported file type: {ext}")
             return "ERROR"
         
+        set_status(filename, "INDEXED")
         logger.info(f"Successfully indexed document: {filename}")
         upload_index(os.getenv("CHROMA_PATH", "./data/chroma"))
         return "INDEXED"
         
     except Exception as e:
+        error_msg = f"ERROR: {str(e)}"
+        set_status(filename, error_msg)
         logger.error(f"Error processing document {filename}: {e}")
         return "ERROR"

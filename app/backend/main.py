@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import logging
 import sys
 import shutil
-from fastapi import FastAPI, UploadFile, File, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, BackgroundTasks, Form
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
@@ -64,8 +64,8 @@ async def read_root(request: Request):
 async def upload_document(
     background_tasks: BackgroundTasks, 
     file: UploadFile = File(...),
-    generation_model: str = None,
-    embedding_model: str = None
+    generation_model: str = Form(None),
+    embedding_model: str = Form(None)
 ):
     file_path = os.path.join(UPLOAD_DIR, file.filename)
     with open(file_path, "wb") as buffer:
@@ -78,22 +78,13 @@ async def upload_document(
 
 @app.get("/document-status/{filename}")
 async def get_document_status(filename: str):
-    chroma_client = get_chroma_client()
-    collection = chroma_client.get_or_create_collection(name="documents")
+    status_path = os.path.join(UPLOAD_DIR, f"{filename}.status")
     
-    # Query for any entry with this filename
-    results = collection.get(
-        where={"filename": filename},
-        limit=1
-    )
-    
-    if results and results.get("ids") and len(results["ids"]) > 0:
-        return {"status": "INDEXED"}
-    
-    # Check if the file is still in the upload folder, implies it's still being processed
-    if os.path.exists(os.path.join(UPLOAD_DIR, filename)):
-        return {"status": "PROCESSING"}
-        
+    if os.path.exists(status_path):
+        with open(status_path, "r", encoding="utf-8") as f:
+            status = f.read().strip()
+            return {"status": status}
+            
     return {"status": "NOT_FOUND"}
 
 @app.delete("/documents/{doc_id}")

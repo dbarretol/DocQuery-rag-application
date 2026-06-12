@@ -212,6 +212,11 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('file', file);
         if (config.generation_model) formData.append('generation_model', config.generation_model);
         if (config.embedding_model) formData.append('embedding_model', config.embedding_model);
+        
+        console.log('Sending upload with:', { 
+            gen: config.generation_model, 
+            emb: config.embedding_model 
+        });
 
         try {
             const res = await fetch('/upload', { method: 'POST', body: formData });
@@ -244,10 +249,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     clearInterval(interval);
                     updateDocStatus(docId, 'ready');
                     setUploadStatus('Documento indexado.', 'success');
-                } else if (data.status === 'NOT_FOUND') {
+                } else if (data.status.startsWith('ERROR')) {
                     clearInterval(interval);
                     updateDocStatus(docId, 'error');
-                    setUploadStatus('Error en indexación.', 'error');
+                    setUploadStatus(data.status, 'error');
+                    console.error('Indexing failed:', data.status);
                 }
             } catch (e) {
                 console.error('Polling error:', e);
