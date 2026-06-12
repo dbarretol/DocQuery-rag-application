@@ -7,6 +7,7 @@ from fastapi import FastAPI, UploadFile, File, BackgroundTasks, Form
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from prometheus_fastapi_instrumentator import Instrumentator
 from starlette.requests import Request
 from pythonjsonlogger import json
@@ -36,6 +37,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Serve static files (favicon, etc.)
+app.mount("/static", StaticFiles(directory="app/templates/static"), name="static")
 
 templates = Jinja2Templates(directory="app/templates")
 
