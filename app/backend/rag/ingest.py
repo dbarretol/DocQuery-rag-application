@@ -39,21 +39,24 @@ def set_status(filename: str, status: str):
 
 async def ingest_document(file_path: str, filename: str, generation_model: str = None, embedding_model: str = None):
     set_status(filename, "PROCESSING")
-    logger.info(f"Processing document: {filename} with models [gen: {generation_model}, emb: {embedding_model}]")
+    logger.info(f"--- STARTING INGESTION: {filename} ---")
+    logger.info(f"Models configured [gen: {generation_model}, emb: {embedding_model}]")
 
     embedding_model_name = embedding_model or get_embedding_model()
     ext = os.path.splitext(filename)[1].lower()
+    logger.info(f"File extension detected: {ext}")
 
     # Validation for text-only model
     if embedding_model_name == "gemini-embedding-001" and ext not in [".md", ".txt", ".csv"]:
         error_msg = "ERROR: Unsupported file type for text-only model"
         set_status(filename, error_msg)
-        logger.warning(f"Rejected file {filename} for model {embedding_model_name}")
+        logger.warning(f"REJECTED: File {filename} for model {embedding_model_name}. Reason: Unsupported type.")
         return "ERROR"
 
     client = get_client()
     chroma_client = get_chroma_client()
     collection = chroma_client.get_or_create_collection(name="documents")
+    logger.info("ChromaDB collection accessed/created.")
 
     @retry_on_api_errors
     def _embed(chunk):
@@ -61,33 +64,39 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
 
     try:
         if ext == ".pdf":
+            logger.info("Processing PDF...")
             doc = fitz.open(file_path)
-            for page_num in range(len(doc)):
+            total_pages = len(doc)
+            logger.info(f"PDF opened. Total pages: {total_pages}")
+
+            for page_num in range(total_pages):
+                logger.info(f"Processing page {page_num + 1}/{total_pages}")
                 page = doc[page_num]
                 text = page.get_text()
                 chunks = chunk_text(text)
+                logger.info(f"Page {page_num + 1} segmented into {len(chunks)} text chunks")
 
                 for i, chunk in enumerate(chunks):
+                    logger.debug(f"Embedding text chunk {i+1}...")
                     response = _embed(chunk)
                     embedding = response.embeddings[0].values
                     collection.add(
                         documents=[chunk],
-                        metadatas=[{
-                            "filename": filename, 
-                            "page": page_num + 1, 
-                            "chunk_index": i, 
-                            "content_type": "text", 
-                            "status": "INDEXED"}],
+                        metadatas=[{"filename": filename, "page": page_num + 1, "chunk_index": i, "content_type": "text", "status": "INDEXED"}],
                         ids=[f"{filename}_{page_num}_{i}_text"],
                         embeddings=[embedding]
                     )
 
                 image_list = page.get_images(full=True)
+                logger.info(f"Page {page_num + 1} has {len(image_list)} images")
+
                 for img_index, img in enumerate(image_list):
+                    logger.info(f"Processing image {img_index + 1}/{len(image_list)} on page {page_num + 1}")
                     xref = img[0]
                     pix = fitz.Pixmap(doc, xref)
                     if pix.colorspace and pix.colorspace.n > 3: pix = fitz.Pixmap(fitz.csRGB, pix)
                     description = await describe_image(pix.tobytes("png"), generation_model)
+                    logger.debug("Image described.")
 
                     response = _embed(description)
                     embedding = response.embeddings[0].values
@@ -97,11 +106,14 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
                         ids=[f"{filename}_{page_num}_{img_index}_image"],
                         embeddings=[embedding]
                     )
+            logger.info("PDF processing completed successfully.")
 
         elif ext in [".md", ".txt"]:
+            logger.info("Processing Text/Markdown file...")
             with open(file_path, "r", encoding="utf-8") as f:
                 text = f.read()
             chunks = chunk_text(text)
+            logger.info(f"File segmented into {len(chunks)} chunks")
             for i, chunk in enumerate(chunks):
                 response = _embed(chunk)
                 embedding = response.embeddings[0].values
@@ -111,11 +123,14 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
                     ids=[f"{filename}_{i}_md"],
                     embeddings=[embedding]
                 )
+            logger.info("Text processing completed.")
+
         elif ext in [".png", ".jpg", ".jpeg"]:
+            logger.info("Processing Image file...")
             with open(file_path, "rb") as f:
                 img_bytes = f.read()
             description = await describe_image(img_bytes, generation_model)
-            
+
             response = _embed(description)
             embedding = response.embeddings[0].values
             collection.add(
@@ -124,18 +139,21 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
                 ids=[f"{filename}_image"],
                 embeddings=[embedding]
             )
+            logger.info("Image processing completed.")
         else:
             set_status(filename, "ERROR: Unsupported file type")
-            logger.warning(f"Unsupported file type: {ext}")
+            logger.warning(f"UNSUPPORTED: File {filename} has extension {ext}")
             return "ERROR"
-        
+
         set_status(filename, "INDEXED")
-        logger.info(f"Successfully indexed document: {filename}")
+        logger.info(f"--- INGESTION SUCCESSFUL: {filename} ---")
         upload_index(os.getenv("CHROMA_PATH", "./data/chroma"))
         return "INDEXED"
-        
+
     except Exception as e:
         error_msg = f"ERROR: {str(e)}"
         set_status(filename, error_msg)
-        logger.error(f"Error processing document {filename}: {e}")
+        logger.error(f"--- INGESTION FAILED: {filename} ---")
+        logger.exception(f"Details: {e}")
         return "ERROR"
+

@@ -1,8 +1,12 @@
+import logging
 from app.backend.config_loader import get_generation_model, get_prompt
 from app.backend.rag.utils import get_client
 from app.backend.rag.retry_config import retry_on_api_errors
 
+logger = logging.getLogger("uvicorn")
+
 def generate_answer(query: str, context: dict, model_name: str = None, language: str = "Spanish"):
+    logger.info(f"Generating answer for: '{query}' (model: {model_name or get_generation_model()}, lang: {language})")
     client = get_client()
     # context structure from retrieval: {'documents': [[...]], 'metadatas': [[...]]}
     docs = context.get("documents", [[]])[0]
@@ -30,5 +34,6 @@ def generate_answer(query: str, context: dict, model_name: str = None, language:
         )
         
     response = _call_gemini()
+    logger.info("Answer generated successfully.")
     
     return {"answer": response.text, "sources": list(set(sources))}

@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 import logging
 import sys
 import shutil
+import datetime
 from fastapi import FastAPI, UploadFile, File, BackgroundTasks, Form
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -19,15 +20,29 @@ from app.backend.storage.chroma import get_chroma_client
 from app.backend.config_loader import config
 
 load_dotenv()
-# Setup JSON Logging for Cloud Run compatibility
+
+# Setup Logging
+os.makedirs("logs", exist_ok=True)
+timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+log_filename = f"logs/app_{timestamp}.log"
+
 logger = logging.getLogger("uvicorn")
-handler = logging.StreamHandler(sys.stdout)
-formatter = json.JsonFormatter(
-    '%(asctime)s %(name)s %(levelname)s %(message)s'
-)
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+# Remove existing handlers to avoid duplicates
+for handler in logger.handlers[:]:
+    logger.removeHandler(handler)
+
+# File Handler
+file_handler = logging.FileHandler(log_filename)
+file_handler.setFormatter(logging.Formatter('%(asctime)s %(name)s %(levelname)s %(message)s'))
+logger.addHandler(file_handler)
+
+# Console Handler for Cloud Run compatibility
+console_handler = logging.StreamHandler(sys.stdout)
+console_handler.setFormatter(json.JsonFormatter('%(asctime)s %(name)s %(levelname)s %(message)s'))
+logger.addHandler(console_handler)
+
 logger.setLevel(logging.INFO)
+logger.info(f"Logging initialized. Log file: {log_filename}")
 
 app = FastAPI(title="Multimodal RAG Platform")
 
