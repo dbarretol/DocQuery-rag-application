@@ -14,6 +14,7 @@ from app.backend.rag.ingest import ingest_document
 from app.backend.rag.retrieval import retrieve_context
 from app.backend.rag.generation import generate_answer
 from app.backend.storage.gcs import download_index
+from app.backend.storage.chroma import get_chroma_client
 from app.backend.config_loader import config
 
 load_dotenv()
@@ -75,9 +76,25 @@ async def upload_document(
     logger.info(f"Received file, queued for processing: {file.filename} (gen: {generation_model}, emb: {embedding_model})")
     return {"message": "Document accepted for processing", "filename": file.filename}
 
-@app.get("/documents")
-async def list_documents():
-    return {"documents": []}
+@app.get("/document-status/{filename}")
+async def get_document_status(filename: str):
+    chroma_client = get_chroma_client()
+    collection = chroma_client.get_or_create_collection(name="documents")
+    
+    # Query for any entry with this filename
+    results = collection.get(
+        where={"filename": filename},
+        limit=1
+    )
+    
+    if results and results.get("ids") and len(results["ids"]) > 0:
+        return {"status": "INDEXED"}
+    
+    # Check if the file is still in the upload folder, implies it's still being processed
+    if os.path.exists(os.path.join(UPLOAD_DIR, filename)):
+        return {"status": "PROCESSING"}
+        
+    return {"status": "NOT_FOUND"}
 
 @app.delete("/documents/{doc_id}")
 async def delete_document(doc_id: str):
