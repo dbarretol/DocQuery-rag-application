@@ -388,7 +388,16 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const data = await res.json();
             typingEl.remove();
-            appendMessage('bot', data.answer || 'Sin respuesta.');
+            
+            // Render markdown
+            const botMessage = document.createElement('div');
+            botMessage.className = 'message bot';
+            botMessage.innerHTML = `
+                <div class="message-avatar">AI</div>
+                <div class="message-bubble">${marked.parse(data.answer || 'Sin respuesta.')}</div>
+            `;
+            chatMessages.appendChild(botMessage);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
         } catch {
             typingEl.remove();
             appendMessage('bot', 'Error de conexión. Intenta de nuevo.');

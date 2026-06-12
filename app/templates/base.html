@@ -712,6 +712,16 @@
             *, *::before, *::after { animation: none !important; transition: none !important; }
         }
     </style>
+    <!-- Markdown parser -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        /* Markdown rendering styles */
+        .message-bubble strong { font-weight: 700; }
+        .message-bubble ul { margin: 8px 0; padding-left: 20px; }
+        .message-bubble p { margin-bottom: 8px; }
+        .message-bubble p:last-child { margin-bottom: 0; }
+        .message-bubble code { background: var(--indigo-dim); padding: 2px 4px; border-radius: 4px; font-family: monospace; }
+    </style>
 </head>
 <body>
     <div class="app-shell">
