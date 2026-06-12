@@ -6,7 +6,7 @@ import io
 from PIL import Image as PILImage
 from app.backend.storage.chroma import get_chroma_client
 from app.backend.storage.gcs import upload_index
-from app.backend.config_loader import get_generation_model, get_embedding_model
+from app.backend.config_loader import get_generation_model, get_embedding_model, get_prompt
 from app.backend.rag.utils import get_client
 from app.backend.rag.retry_config import retry_on_api_errors
 
@@ -26,7 +26,7 @@ async def describe_image(image_bytes: bytes, model_name: str = None) -> str:
     def _generate():
         return client.models.generate_content(
             model=model_name or get_generation_model(),
-            contents=["Explain what is going on in the image.", image]
+            contents=[get_prompt("image_description"), image]
         )
         
     response = _generate()

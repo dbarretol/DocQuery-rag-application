@@ -1,4 +1,4 @@
-from app.backend.config_loader import get_generation_model
+from app.backend.config_loader import get_generation_model, get_prompt
 from app.backend.rag.utils import get_client
 from app.backend.rag.retry_config import retry_on_api_errors
 
@@ -18,16 +18,7 @@ def generate_answer(query: str, context: dict, model_name: str = None):
         formatted_context += f"Content: {doc}\nSource: {filename}, Page: {page}\n\n"
         sources.append(f"{filename} (page {page})")
         
-    prompt = f"""Use the provided context to answer the question. 
-When citing, use the provided source information.
-If the answer is not in the context, say so.
-
-Context:
-{formatted_context}
-
-Question: {query}
-
-Answer:"""
+    prompt = get_prompt("answer_generation").format(context=formatted_context, query=query)
     
     model = model_name or get_generation_model()
     

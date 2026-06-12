@@ -13,3 +13,6 @@ def get_generation_model():
 
 def get_embedding_model():
     return config["models"]["embeddings"]["default"]
+
+def get_prompt(prompt_key):
+    return config["prompts"][prompt_key]
