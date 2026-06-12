@@ -5,6 +5,7 @@
     --indigo:     #4F6EF7;
     --indigo-dim: #EEF1FE;
     --uni-red:    #800404;
+    --uni-red-dim:#FDE8E8;
     --uni-yellow: #BFB48D;
     --surface:    #FAFBFC;
     --white:      #FFFFFF;
@@ -178,8 +179,8 @@ html, body {
 
 .upload-zone:hover,
 .upload-zone.drag-over {
-    border-color: var(--indigo);
-    background: var(--indigo-dim);
+    border-color: var(--uni-red);
+    background: var(--uni-red-dim);
 }
 
 .upload-zone input[type="file"] {
@@ -191,7 +192,7 @@ html, body {
 
 .upload-zone-icon {
     width: 32px; height: 32px;
-    background: var(--indigo-dim);
+    background: var(--uni-red-dim);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -199,7 +200,7 @@ html, body {
     margin: 0 auto 8px;
 }
 
-.upload-zone-icon svg { width: 16px; height: 16px; color: var(--indigo); }
+.upload-zone-icon svg { width: 16px; height: 16px; color: var(--uni-red); }
 
 .upload-zone p {
     font-size: 12px;
@@ -207,7 +208,7 @@ html, body {
     line-height: 1.4;
 }
 
-.upload-zone strong { color: var(--indigo); font-weight: 600; }
+.upload-zone strong { color: var(--uni-red); font-weight: 600; }
 
 .btn-upload {
     margin-top: 10px;
@@ -386,13 +387,17 @@ html, body {
 
 .chat-empty-icon {
     width: 56px; height: 56px;
-    background: var(--indigo-dim);
+    background: var(--uni-red-dim);
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     margin-bottom: 16px;
 }
 
-.chat-empty-icon svg { width: 28px; height: 28px; color: var(--indigo); }
+.chat-empty-icon svg { 
+    width: 28px; 
+    height: 28px; 
+    color: var(--uni-red); 
+}
 
 .chat-empty h3 {
     font-size: 16px;
