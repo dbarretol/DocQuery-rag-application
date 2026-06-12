@@ -87,10 +87,25 @@ async def get_document_status(filename: str):
             
     return {"status": "NOT_FOUND"}
 
-@app.delete("/documents/{doc_id}")
-async def delete_document(doc_id: str):
-    logger.info(f"Deleting document: {doc_id}")
-    return {"message": f"Document {doc_id} deleted"}
+@app.delete("/documents/{filename}")
+async def delete_document(filename: str):
+    logger.info(f"Deleting document: {filename}")
+    
+    # 1. Remove from ChromaDB
+    chroma_client = get_chroma_client()
+    collection = chroma_client.get_or_create_collection(name="documents")
+    collection.delete(where={"filename": filename})
+    
+    # 2. Remove files
+    file_path = os.path.join(UPLOAD_DIR, filename)
+    status_path = os.path.join(UPLOAD_DIR, f"{filename}.status")
+    
+    if os.path.exists(file_path):
+        os.remove(file_path)
+    if os.path.exists(status_path):
+        os.remove(status_path)
+        
+    return {"message": f"Document {filename} deleted"}
 
 @app.post("/chat")
 async def chat(data: dict):

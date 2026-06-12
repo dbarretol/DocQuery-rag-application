@@ -314,10 +314,24 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    window.removeDoc = function(id) {
+    window.removeDoc = async function(id) {
         const idx = docs.findIndex(d => d.id === id);
-        if (idx !== -1) docs.splice(idx, 1);
-        renderDocList();
+        if (idx === -1) return;
+        
+        const doc = docs[idx];
+        
+        try {
+            const res = await fetch(`/documents/${encodeURIComponent(doc.name)}`, { method: 'DELETE' });
+            if (res.ok) {
+                docs.splice(idx, 1);
+                renderDocList();
+            } else {
+                alert('Error al eliminar el documento');
+            }
+        } catch (e) {
+            console.error('Delete error:', e);
+            alert('Error de conexión al eliminar');
+        }
     };
 
     function formatBytes(b) {
