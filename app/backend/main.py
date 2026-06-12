@@ -69,9 +69,15 @@ async def delete_document(doc_id: str):
 @app.post("/chat")
 async def chat(data: dict):
     question = data.get("question")
+    if not question:
+        return {"error": "Question is required"}
+        
     logger.info("Received chat query", extra={"question": question})
     
+    # Retrieval
     context = retrieve_context(question)
+    
+    # Generation
     response = generate_answer(question, context)
     
     return response
