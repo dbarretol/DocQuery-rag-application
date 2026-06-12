@@ -106,6 +106,26 @@ async def get_document_status(filename: str):
             
     return {"status": "NOT_FOUND"}
 
+@app.get("/knowledge-base")
+async def get_knowledge_base():
+    chroma_client = get_chroma_client()
+    collection = chroma_client.get_or_create_collection(name="documents")
+    
+    # Get all unique filenames from metadatas
+    results = collection.get(include=["metadatas"])
+    metadatas = results["metadatas"]
+    
+    unique_docs = {}
+    for meta in metadatas:
+        filename = meta.get("filename")
+        if filename and filename not in unique_docs:
+            unique_docs[filename] = {
+                "filename": filename,
+                "content_type": meta.get("content_type", "unknown")
+            }
+            
+    return {"documents": list(unique_docs.values())}
+
 @app.delete("/documents/{filename}")
 async def delete_document(filename: str):
     logger.info(f"Deleting document: {filename}")
@@ -113,6 +133,8 @@ async def delete_document(filename: str):
     # 1. Remove from ChromaDB
     chroma_client = get_chroma_client()
     collection = chroma_client.get_or_create_collection(name="documents")
+    
+    # Delete based on filename in metadata
     collection.delete(where={"filename": filename})
     
     # 2. Remove files
