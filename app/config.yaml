@@ -37,7 +37,7 @@ prompts:
   answer_generation: |
     Use the provided context to answer the question.
     When citing, use the provided source information.
-    If the answer is not in the context, say so.
+    If the answer is not in the context, say so, DO NOT INVENT WITHOUT CONTEXT.
 
     Context:
     {context}

@@ -316,23 +316,45 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.removeDoc = async function(id) {
         const idx = docs.findIndex(d => d.id === id);
-        if (idx === -1) return;
-        
+        if (idx === -1) {
+            console.warn('Doc not found in local array:', id);
+            return;
+        }
+
         const doc = docs[idx];
-        
+        console.log('Attempting to delete:', doc.name, 'with id:', id);
+
         try {
             const res = await fetch(`/documents/${encodeURIComponent(doc.name)}`, { method: 'DELETE' });
             if (res.ok) {
+                console.log('Doc deleted on server, removing from DOM');
+
+                // Remove from local array
                 docs.splice(idx, 1);
-                renderDocList();
+
+                // Direct DOM manipulation
+                const docItem = document.querySelector(`.doc-item[data-id="${id}"]`);
+                if (docItem) {
+                    docItem.remove();
+                    console.log('DOM element removed');
+                } else {
+                    console.error('DOM element not found for id:', id);
+                }
+
+                // Re-check empty state
+                if (docs.length === 0) {
+                    document.getElementById('emptyState').style.display = '';
+                }
             } else {
-                alert('Error al eliminar el documento');
+                console.error('Server failed to delete:', res.statusText);
+                alert('Error al eliminar el documento en servidor');
             }
         } catch (e) {
             console.error('Delete error:', e);
             alert('Error de conexión al eliminar');
         }
     };
+
 
     function formatBytes(b) {
         if (b < 1024) return b + ' B';
