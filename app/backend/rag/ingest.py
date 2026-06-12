@@ -19,21 +19,21 @@ def chunk_text(text: str, chunk_size: int = 500) -> List[str]:
     char_limit = chunk_size * 4
     return [text[i:i + char_limit] for i in range(0, len(text), char_limit)]
 
-async def describe_image(image_bytes: bytes) -> str:
+async def describe_image(image_bytes: bytes, model_name: str = None) -> str:
     """Generate image description using Gemini."""
     image = PILImage.open(io.BytesIO(image_bytes))
     response = client.models.generate_content(
-        model=get_generation_model(),
+        model=model_name or get_generation_model(),
         contents=["Explain what is going on in the image.", image]
     )
     return response.text
 
-async def ingest_document(file_path: str, filename: str):
-    logger.info(f"Processing document: {filename}")
+async def ingest_document(file_path: str, filename: str, generation_model: str = None, embedding_model: str = None):
+    logger.info(f"Processing document: {filename} with models [gen: {generation_model}, emb: {embedding_model}]")
     
     chroma_client = get_chroma_client()
     collection = chroma_client.get_or_create_collection(name="documents")
-    embedding_model_name = get_embedding_model()
+    embedding_model_name = embedding_model or get_embedding_model()
     
     try:
         # Determine content type
@@ -61,7 +61,7 @@ async def ingest_document(file_path: str, filename: str):
                     xref = img[0]
                     pix = fitz.Pixmap(doc, xref)
                     if pix.colorspace and pix.colorspace.n > 3: pix = fitz.Pixmap(fitz.csRGB, pix)
-                    description = await describe_image(pix.tobytes("png"))
+                    description = await describe_image(pix.tobytes("png"), generation_model)
                     
                     response = client.models.embed_content(model=embedding_model_name, contents=description)
                     embedding = response.embeddings[0].values

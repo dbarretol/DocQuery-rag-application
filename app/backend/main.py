@@ -13,6 +13,7 @@ from app.backend.rag.ingest import ingest_document
 from app.backend.rag.retrieval import retrieve_context
 from app.backend.rag.generation import generate_answer
 from app.backend.storage.gcs import download_index
+from app.backend.config_loader import config
 
 # Setup JSON Logging for Cloud Run compatibility
 logger = logging.getLogger("uvicorn")
@@ -25,12 +26,6 @@ logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
 app = FastAPI(title="Multimodal RAG Platform")
-
-@app.on_event("startup")
-async def startup_event():
-    download_index(os.getenv("CHROMA_PATH", "./data/chroma"))
-
-Instrumentator().instrument(app).expose(app)
 
 app.add_middleware(
     CORSMiddleware,
@@ -45,23 +40,41 @@ templates = Jinja2Templates(directory="app/templates")
 UPLOAD_DIR = "data/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+@app.on_event("startup")
+async def startup_event():
+    download_index(os.getenv("CHROMA_PATH", "./data/chroma"))
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+@app.get("/config")
+async def get_config():
+    logger.info("Config requested")
+    return config
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     return templates.TemplateResponse(request=request, name="index.html")
 
 @app.post("/upload")
-async def upload_document(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
+async def upload_document(
+    background_tasks: BackgroundTasks, 
+    file: UploadFile = File(...),
+    generation_model: str = None,
+    embedding_model: str = None
+):
     file_path = os.path.join(UPLOAD_DIR, file.filename)
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     
-    background_tasks.add_task(ingest_document, file_path, file.filename)
+    background_tasks.add_task(ingest_document, file_path, file.filename, generation_model, embedding_model)
     
-    logger.info("Received file, queued for processing", extra={"filename": file.filename})
+    logger.info("Received file, queued for processing", extra={
+        "filename": file.filename, 
+        "gen_model": generation_model, 
+        "emb_model": embedding_model
+    })
     return {"message": "Document accepted for processing", "filename": file.filename}
 
 @app.get("/documents")
@@ -76,15 +89,20 @@ async def delete_document(doc_id: str):
 @app.post("/chat")
 async def chat(data: dict):
     question = data.get("question")
+    generation_model = data.get("generation_model")
+    
     if not question:
         return {"error": "Question is required"}
         
-    logger.info("Received chat query", extra={"question": question})
+    logger.info("Received chat query", extra={"question": question, "gen_model": generation_model})
     
     # Retrieval
     context = retrieve_context(question)
     
     # Generation
-    response = generate_answer(question, context)
+    response = generate_answer(question, context, generation_model)
     
     return response
+
+# Instrumentator at the end
+Instrumentator().instrument(app).expose(app)
