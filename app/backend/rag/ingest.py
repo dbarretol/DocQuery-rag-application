@@ -1,6 +1,5 @@
 import os
 import fitz
-from google import genai
 from typing import List
 import logging
 import io
@@ -8,16 +7,9 @@ from PIL import Image as PILImage
 from app.backend.storage.chroma import get_chroma_client
 from app.backend.storage.gcs import upload_index
 from app.backend.config_loader import get_generation_model, get_embedding_model
+from app.backend.rag.utils import get_client
 
 logger = logging.getLogger("uvicorn")
-
-# Configure Gemini
-api_key = os.getenv("GEMINI_API_KEY")
-logger.info(f"API Key present: {bool(api_key)}")
-if api_key:
-    logger.info(f"API Key prefix: {api_key[:5]}...")
-
-client = genai.Client(api_key=api_key or "dummy_key")
 
 def chunk_text(text: str, chunk_size: int = 500) -> List[str]:
     """Simple chunking by character count (approx tokens)."""
@@ -26,6 +18,7 @@ def chunk_text(text: str, chunk_size: int = 500) -> List[str]:
 
 async def describe_image(image_bytes: bytes, model_name: str = None) -> str:
     """Generate image description using Gemini."""
+    client = get_client()
     image = PILImage.open(io.BytesIO(image_bytes))
     response = client.models.generate_content(
         model=model_name or get_generation_model(),
@@ -36,6 +29,7 @@ async def describe_image(image_bytes: bytes, model_name: str = None) -> str:
 async def ingest_document(file_path: str, filename: str, generation_model: str = None, embedding_model: str = None):
     logger.info(f"Processing document: {filename} with models [gen: {generation_model}, emb: {embedding_model}]")
     
+    client = get_client()
     chroma_client = get_chroma_client()
     collection = chroma_client.get_or_create_collection(name="documents")
     embedding_model_name = embedding_model or get_embedding_model()

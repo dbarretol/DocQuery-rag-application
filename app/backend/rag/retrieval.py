@@ -1,11 +1,9 @@
-import os
-from google import genai
 from app.backend.storage.chroma import get_chroma_client
 from app.backend.config_loader import get_embedding_model
-
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", "dummy_key"))
+from app.backend.rag.utils import get_client
 
 def retrieve_context(query: str, k: int = 5):
+    client = get_client()
     # 1. Generate query embedding using valid embedding model
     response = client.models.embed_content(
         model=get_embedding_model(),

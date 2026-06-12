@@ -1,10 +1,8 @@
-from google import genai
-import os
 from app.backend.config_loader import get_generation_model
-
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", "dummy_key"))
+from app.backend.rag.utils import get_client
 
 def generate_answer(query: str, context: dict, model_name: str = None):
+    client = get_client()
     # context structure from retrieval: {'documents': [[...]], 'metadatas': [[...]]}
     docs = context.get("documents", [[]])[0]
     metadatas = context.get("metadatas", [[]])[0]

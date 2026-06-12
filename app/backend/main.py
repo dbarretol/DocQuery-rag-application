@@ -1,8 +1,8 @@
+import os
+from dotenv import load_dotenv
 import logging
 import sys
 import shutil
-import os
-from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File, BackgroundTasks
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -16,8 +16,8 @@ from app.backend.rag.generation import generate_answer
 from app.backend.storage.gcs import download_index
 from app.backend.config_loader import config
 
-# Setup JSON Logging for Cloud Run compatibility
 load_dotenv()
+# Setup JSON Logging for Cloud Run compatibility
 logger = logging.getLogger("uvicorn")
 handler = logging.StreamHandler(sys.stdout)
 formatter = json.JsonFormatter(
