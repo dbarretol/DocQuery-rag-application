@@ -7,18 +7,28 @@ genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel(get_generation_model())
 
 def generate_answer(query: str, context: dict):
-    # context is the output from retrieval
-    # chroma query results structure: {'documents': [[...]], 'metadatas': [[...]]}
+    # context structure from retrieval: {'documents': [[...]], 'metadatas': [[...]]}
     docs = context.get("documents", [[]])[0]
     metadatas = context.get("metadatas", [[]])[0]
     
     formatted_context = ""
     sources = []
+    
     for doc, meta in zip(docs, metadatas):
-        formatted_context += f"- {doc}\n"
+        # Format context: content + citation
+        formatted_context += f"Content: {doc}\nSource: {meta.get('filename')}, Page: {meta.get('page')}\n\n"
         sources.append(f"{meta.get('filename')} (page {meta.get('page')})")
         
-    prompt = f"Use the context provided to answer the question. Cite the sources.\n\nQuestion: {query}\n\nContext:\n{formatted_context}\n\nAnswer:"
+    prompt = f"""Use the provided context to answer the question. 
+When citing, use the provided source information.
+If the answer is not in the context, say so.
+
+Context:
+{formatted_context}
+
+Question: {query}
+
+Answer:"""
     
     response = model.generate_content(prompt)
-    return {"answer": response.text, "sources": sources}
+    return {"answer": response.text, "sources": list(set(sources))}
