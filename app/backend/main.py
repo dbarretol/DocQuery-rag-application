@@ -17,7 +17,9 @@ from app.backend.storage.gcs import download_index
 # Setup JSON Logging for Cloud Run compatibility
 logger = logging.getLogger("uvicorn")
 handler = logging.StreamHandler(sys.stdout)
-formatter = json.JsonFormatter('%(asctime)s %(name)s %(levelname)s %(message)s')
+formatter = json.JsonFormatter(
+    '%(asctime)s %(name)s %(levelname)s %(message)s'
+)
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.setLevel(logging.INFO)
