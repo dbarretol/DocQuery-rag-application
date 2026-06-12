@@ -40,32 +40,44 @@ def set_status(filename: str, status: str):
 async def ingest_document(file_path: str, filename: str, generation_model: str = None, embedding_model: str = None):
     set_status(filename, "PROCESSING")
     logger.info(f"Processing document: {filename} with models [gen: {generation_model}, emb: {embedding_model}]")
-    
+
+    embedding_model_name = embedding_model or get_embedding_model()
+    ext = os.path.splitext(filename)[1].lower()
+
+    # Validation for text-only model
+    if embedding_model_name == "gemini-embedding-001" and ext not in [".md", ".txt", ".csv"]:
+        error_msg = "ERROR: Unsupported file type for text-only model"
+        set_status(filename, error_msg)
+        logger.warning(f"Rejected file {filename} for model {embedding_model_name}")
+        return "ERROR"
+
     client = get_client()
     chroma_client = get_chroma_client()
     collection = chroma_client.get_or_create_collection(name="documents")
-    embedding_model_name = embedding_model or get_embedding_model()
-    
+
     @retry_on_api_errors
     def _embed(chunk):
         return client.models.embed_content(model=embedding_model_name, contents=chunk)
-    
+
     try:
-        ext = os.path.splitext(filename)[1].lower()
-        
         if ext == ".pdf":
             doc = fitz.open(file_path)
             for page_num in range(len(doc)):
                 page = doc[page_num]
                 text = page.get_text()
                 chunks = chunk_text(text)
-                
+
                 for i, chunk in enumerate(chunks):
                     response = _embed(chunk)
                     embedding = response.embeddings[0].values
                     collection.add(
                         documents=[chunk],
-                        metadatas=[{"filename": filename, "page": page_num + 1, "chunk_index": i, "content_type": "text", "status": "INDEXED"}],
+                        metadatas=[{
+                            "filename": filename, 
+                            "page": page_num + 1, 
+                            "chunk_index": i, 
+                            "content_type": "text", 
+                            "status": "INDEXED"}],
                         ids=[f"{filename}_{page_num}_{i}_text"],
                         embeddings=[embedding]
                     )
@@ -76,7 +88,7 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
                     pix = fitz.Pixmap(doc, xref)
                     if pix.colorspace and pix.colorspace.n > 3: pix = fitz.Pixmap(fitz.csRGB, pix)
                     description = await describe_image(pix.tobytes("png"), generation_model)
-                    
+
                     response = _embed(description)
                     embedding = response.embeddings[0].values
                     collection.add(
@@ -85,6 +97,7 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
                         ids=[f"{filename}_{page_num}_{img_index}_image"],
                         embeddings=[embedding]
                     )
+
         elif ext in [".md", ".txt"]:
             with open(file_path, "r", encoding="utf-8") as f:
                 text = f.read()
