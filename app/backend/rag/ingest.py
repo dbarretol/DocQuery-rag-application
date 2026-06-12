@@ -59,7 +59,7 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
                     embedding = response.embeddings[0].values
                     collection.add(
                         documents=[chunk],
-                        metadatas=[{"filename": filename, "page": page_num, "chunk_index": i, "content_type": "text", "status": "INDEXED"}],
+                        metadatas=[{"filename": filename, "page": page_num + 1, "chunk_index": i, "content_type": "text", "status": "INDEXED"}],
                         ids=[f"{filename}_{page_num}_{i}_text"],
                         embeddings=[embedding]
                     )
@@ -75,7 +75,7 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
                     embedding = response.embeddings[0].values
                     collection.add(
                         documents=[description],
-                        metadatas=[{"filename": filename, "page": page_num, "img_index": img_index, "content_type": "image", "status": "INDEXED"}],
+                        metadatas=[{"filename": filename, "page": page_num + 1, "img_index": img_index, "content_type": "image", "status": "INDEXED"}],
                         ids=[f"{filename}_{page_num}_{img_index}_image"],
                         embeddings=[embedding]
                     )
