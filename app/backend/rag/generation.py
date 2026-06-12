@@ -1,5 +1,6 @@
 from app.backend.config_loader import get_generation_model
 from app.backend.rag.utils import get_client
+from app.backend.rag.retry_config import retry_on_api_errors
 
 def generate_answer(query: str, context: dict, model_name: str = None):
     client = get_client()
@@ -30,9 +31,13 @@ Answer:"""
     
     model = model_name or get_generation_model()
     
-    response = client.models.generate_content(
-        model=model,
-        contents=prompt
-    )
+    @retry_on_api_errors
+    def _call_gemini():
+        return client.models.generate_content(
+            model=model,
+            contents=prompt
+        )
+        
+    response = _call_gemini()
     
     return {"answer": response.text, "sources": list(set(sources))}

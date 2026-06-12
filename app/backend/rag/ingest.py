@@ -8,6 +8,7 @@ from app.backend.storage.chroma import get_chroma_client
 from app.backend.storage.gcs import upload_index
 from app.backend.config_loader import get_generation_model, get_embedding_model
 from app.backend.rag.utils import get_client
+from app.backend.rag.retry_config import retry_on_api_errors
 
 logger = logging.getLogger("uvicorn")
 
@@ -20,10 +21,15 @@ async def describe_image(image_bytes: bytes, model_name: str = None) -> str:
     """Generate image description using Gemini."""
     client = get_client()
     image = PILImage.open(io.BytesIO(image_bytes))
-    response = client.models.generate_content(
-        model=model_name or get_generation_model(),
-        contents=["Explain what is going on in the image.", image]
-    )
+    
+    @retry_on_api_errors
+    def _generate():
+        return client.models.generate_content(
+            model=model_name or get_generation_model(),
+            contents=["Explain what is going on in the image.", image]
+        )
+        
+    response = _generate()
     return response.text
 
 async def ingest_document(file_path: str, filename: str, generation_model: str = None, embedding_model: str = None):
@@ -33,6 +39,10 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
     chroma_client = get_chroma_client()
     collection = chroma_client.get_or_create_collection(name="documents")
     embedding_model_name = embedding_model or get_embedding_model()
+    
+    @retry_on_api_errors
+    def _embed(chunk):
+        return client.models.embed_content(model=embedding_model_name, contents=chunk)
     
     try:
         ext = os.path.splitext(filename)[1].lower()
@@ -45,7 +55,7 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
                 chunks = chunk_text(text)
                 
                 for i, chunk in enumerate(chunks):
-                    response = client.models.embed_content(model=embedding_model_name, contents=chunk)
+                    response = _embed(chunk)
                     embedding = response.embeddings[0].values
                     collection.add(
                         documents=[chunk],
@@ -61,7 +71,7 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
                     if pix.colorspace and pix.colorspace.n > 3: pix = fitz.Pixmap(fitz.csRGB, pix)
                     description = await describe_image(pix.tobytes("png"), generation_model)
                     
-                    response = client.models.embed_content(model=embedding_model_name, contents=description)
+                    response = _embed(description)
                     embedding = response.embeddings[0].values
                     collection.add(
                         documents=[description],
@@ -74,7 +84,7 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
                 text = f.read()
             chunks = chunk_text(text)
             for i, chunk in enumerate(chunks):
-                response = client.models.embed_content(model=embedding_model_name, contents=chunk)
+                response = _embed(chunk)
                 embedding = response.embeddings[0].values
                 collection.add(
                     documents=[chunk],
@@ -87,7 +97,7 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
                 img_bytes = f.read()
             description = await describe_image(img_bytes, generation_model)
             
-            response = client.models.embed_content(model=embedding_model_name, contents=description)
+            response = _embed(description)
             embedding = response.embeddings[0].values
             collection.add(
                 documents=[description],
