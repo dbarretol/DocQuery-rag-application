@@ -31,3 +31,17 @@ models:
         description: "Embedding multimodal para texto, imágenes, video, audio y PDF"
       - name: "gemini-embedding-001"
         description: "Embedding para casos de uso solo de texto"
+
+prompts:
+  image_description: "Explain what is going on in the image."
+  answer_generation: |
+    Use the provided context to answer the question.
+    When citing, use the provided source information.
+    If the answer is not in the context, say so, DO NOT INVENT WITHOUT CONTEXT.
+
+    Context:
+    {context}
+
+    Question: {query}
+
+    Answer:

@@ -1,10 +1,9 @@
-from google import genai
-import os
-from app.backend.config_loader import get_generation_model
-
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", "dummy_key"))
+from app.backend.config_loader import get_generation_model, get_prompt
+from app.backend.rag.utils import get_client
+from app.backend.rag.retry_config import retry_on_api_errors
 
 def generate_answer(query: str, context: dict, model_name: str = None):
+    client = get_client()
     # context structure from retrieval: {'documents': [[...]], 'metadatas': [[...]]}
     docs = context.get("documents", [[]])[0]
     metadatas = context.get("metadatas", [[]])[0]
@@ -19,22 +18,17 @@ def generate_answer(query: str, context: dict, model_name: str = None):
         formatted_context += f"Content: {doc}\nSource: {filename}, Page: {page}\n\n"
         sources.append(f"{filename} (page {page})")
         
-    prompt = f"""Use the provided context to answer the question. 
-When citing, use the provided source information.
-If the answer is not in the context, say so.
-
-Context:
-{formatted_context}
-
-Question: {query}
-
-Answer:"""
+    prompt = get_prompt("answer_generation").format(context=formatted_context, query=query)
     
     model = model_name or get_generation_model()
     
-    response = client.models.generate_content(
-        model=model,
-        contents=prompt
-    )
+    @retry_on_api_errors
+    def _call_gemini():
+        return client.models.generate_content(
+            model=model,
+            contents=prompt
+        )
+        
+    response = _call_gemini()
     
     return {"answer": response.text, "sources": list(set(sources))}
