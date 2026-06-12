@@ -115,17 +115,18 @@ async def delete_document(filename: str):
 async def chat(data: dict):
     question = data.get("question")
     generation_model = data.get("generation_model")
+    language = data.get("language", "Spanish")
     
     if not question:
         return {"error": "Question is required"}
         
-    logger.info(f"Received chat query: {question} (gen: {generation_model})")
+    logger.info(f"Received chat query: {question} (gen: {generation_model}, lang: {language})")
     
     # Retrieval
     context = retrieve_context(question)
     
     # Generation
-    response = generate_answer(question, context, generation_model)
+    response = generate_answer(question, context, generation_model, language)
     
     return response
 

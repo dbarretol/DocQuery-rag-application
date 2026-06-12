@@ -2,7 +2,7 @@ from app.backend.config_loader import get_generation_model, get_prompt
 from app.backend.rag.utils import get_client
 from app.backend.rag.retry_config import retry_on_api_errors
 
-def generate_answer(query: str, context: dict, model_name: str = None):
+def generate_answer(query: str, context: dict, model_name: str = None, language: str = "Spanish"):
     client = get_client()
     # context structure from retrieval: {'documents': [[...]], 'metadatas': [[...]]}
     docs = context.get("documents", [[]])[0]
@@ -18,7 +18,7 @@ def generate_answer(query: str, context: dict, model_name: str = None):
         formatted_context += f"Content: {doc}\nSource: {filename}, Page: {page}\n\n"
         sources.append(f"{filename} (page {page})")
         
-    prompt = get_prompt("answer_generation").format(context=formatted_context, query=query)
+    prompt = get_prompt("answer_generation").format(context=formatted_context, query=query, language=language)
     
     model = model_name or get_generation_model()
     

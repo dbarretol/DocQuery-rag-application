@@ -2,27 +2,24 @@ models:
   generation:
     default: "gemini-2.5-flash"
     options:
-      - name: "gemini-2.5-flash-lite"
-        cost: "$"
-        description: "Modelo más pequeño y rentable, diseñado para uso masivo"
-      - name: "gemini-3.1-flash-lite"
-        cost: "$$"
-        description: "Optimizado para tareas de alto volumen, traducción y procesamiento simple de datos"
-      - name: "gemini-2.5-flash"
-        cost: "$$$"
-        description: "Primer modelo híbrido de razonamiento con ventana de contexto de 1M tokens"
-      - name: "gemini-3-flash-preview"
-        cost: "$$$"
-        description: "Modelo inteligente construido para velocidad, con grounding superior"
-      - name: "gemini-3.1-flash-live-preview"
-        cost: "$$$$"
-        description: "Modelo de baja latencia optimizado para diálogo en tiempo real"
       - name: "gemini-3.5-flash"
         cost: "$$$$$"
         description: "Modelo más inteligente construido para la velocidad, combinando inteligencia de frontera con búsqueda y grounding superior"
+      - name: "gemini-3-flash-preview"
+        cost: "$$$"
+        description: "Modelo inteligente construido para velocidad, con grounding superior"
+      - name: "gemini-3.1-flash-lite"
+        cost: "$$"
+        description: "Optimizado para tareas de alto volumen, traducción y procesamiento simple de datos"
       - name: "gemini-2.5-pro"
         cost: "$$$$$$"
         description: "Modelo multipropósito de última generación, excelente en programación y razonamiento complejo"
+      - name: "gemini-2.5-flash"
+        cost: "$$$"
+        description: "Primer modelo híbrido de razonamiento con ventana de contexto de 1M tokens"
+      - name: "gemini-2.5-flash-lite"
+        cost: "$"
+        description: "Modelo más pequeño y rentable, diseñado para uso masivo"
 
   embeddings:
     default: "gemini-embedding-2"
@@ -33,15 +30,35 @@ models:
         description: "Embedding para casos de uso solo de texto"
 
 prompts:
-  image_description: "Explain what is going on in the image."
+  image_description: |
+    Generate a detailed description of the image for semantic search.
+    Include:
+    - visible objects
+    - people and actions
+    - text appearing in the image
+    - locations or settings if visible
+    - important relationships between elements
+
+    Only describe what can be observed directly.Do not speculate about information that is not directly visible.
   answer_generation: |
-    Use the provided context to answer the question.
-    When citing, use the provided source information.
-    If the answer is not in the context, say so, DO NOT INVENT WITHOUT CONTEXT.
+    You are a retrieval-augmented question answering assistant.
+
+    Your task is to answer the user's question using ONLY the provided context.
+
+    Guidelines:
+    - Identify and extract relevant information from the context.
+    - Answer the question concisely but completely using that information.
+    - Cite all supporting source identifiers for every factual statement.
+    - If multiple sources support the answer, cite them all.
+    - If the context does not contain enough information, explicitly respond:
+      "The provided context does not contain enough information to answer this question."
+    - Never invent facts, speculate, or use external knowledge.
+    - Respond in {language}.
 
     Context:
     {context}
 
-    Question: {query}
+    Question:
+    {query}
 
     Answer:

@@ -72,11 +72,20 @@
                     </select>
                     <p class="settings-hint">Modelo utilizado para indexar documentos. Los cambios solo afectan a nuevas subidas.</p>
                 </div>
+                <div class="settings-group">
+                    <label class="settings-label">Idioma de la respuesta</label>
+                    <select class="settings-select" id="selectLanguage">
+                        <option value="Spanish">Español</option>
+                        <option value="English">Inglés</option>
+                    </select>
+                    <p class="settings-hint">Idioma en el que responderá el asistente.</p>
+                </div>
                 <div class="settings-group" style="margin-bottom: 0;">
                     <label class="settings-label">Estado Actual</label>
                     <div style="font-size: 13px; color: var(--text-mid); background: var(--surface); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border);">
                         <div><strong>Generación:</strong> <span id="currentGenModel">Cargando...</span></div>
                         <div style="margin-top: 4px;"><strong>Embeddings:</strong> <span id="currentEmbModel">Cargando...</span></div>
+                        <div style="margin-top: 4px;"><strong>Idioma:</strong> <span id="currentLanguage">Cargando...</span></div>
                     </div>
                 </div>
             </div>

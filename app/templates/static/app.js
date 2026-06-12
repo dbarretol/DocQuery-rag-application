@@ -3,7 +3,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const docs = [];
     let config = { 
         generation_model: localStorage.getItem('gen_model') || '', 
-        embedding_model: localStorage.getItem('emb_model') || '' 
+        embedding_model: localStorage.getItem('emb_model') || '',
+        language: localStorage.getItem('language') || 'Spanish'
     };
 
     /* ── Settings Management ── */
@@ -13,8 +14,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnSaveSettings  = document.getElementById('btnSaveSettings');
     const selectGenModel   = document.getElementById('selectGenModel');
     const selectEmbModel   = document.getElementById('selectEmbModel');
+    const selectLanguage   = document.getElementById('selectLanguage');
     const currentGenModel  = document.getElementById('currentGenModel');
     const currentEmbModel  = document.getElementById('currentEmbModel');
+    const currentLanguage  = document.getElementById('currentLanguage');
 
     btnOpenSettings.addEventListener('click', () => modalSettings.classList.add('active'));
     btnCloseSettings.addEventListener('click', () => modalSettings.classList.remove('active'));
@@ -63,6 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateSettingsUI() {
         currentGenModel.textContent = config.generation_model;
         currentEmbModel.textContent = config.embedding_model;
+        currentLanguage.textContent = config.language;
         
         // Header
         const headerGenModel = document.getElementById('headerGenModel');
@@ -88,13 +92,16 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update selects if they were changed elsewhere
         selectGenModel.value = config.generation_model;
         selectEmbModel.value = config.embedding_model;
+        selectLanguage.value = config.language;
     }
 
     btnSaveSettings.addEventListener('click', () => {
         config.generation_model = selectGenModel.value;
         config.embedding_model = selectEmbModel.value;
+        config.language = selectLanguage.value;
         localStorage.setItem('gen_model', config.generation_model);
         localStorage.setItem('emb_model', config.embedding_model);
+        localStorage.setItem('language', config.language);
         updateSettingsUI();
         modalSettings.classList.remove('active');
     });
@@ -337,7 +344,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     question, 
-                    generation_model: config.generation_model 
+                    generation_model: config.generation_model,
+                    language: config.language
                 })
             });
             const data = await res.json();
