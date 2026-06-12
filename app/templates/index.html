@@ -1,62 +1,309 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="panel">
-    <h2>Configuración</h2>
-    <input type="text" id="gcsBucket" placeholder="GCS_BUCKET">
-</div>
+        <!-- Sidebar: documentos -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">Documentos</div>
 
-<div class="panel">
-    <h2>Subir Documentos</h2>
-    <input type="file" id="fileInput">
-    <button onclick="uploadFile()">Subir</button>
-    <div id="uploadStatus"></div>
-</div>
+                <!-- Upload zone -->
+                <div class="upload-zone" id="uploadZone">
+                    <input type="file" id="fileInput" accept=".pdf,.txt,.docx,.png,.jpg,.jpeg">
+                    <div class="upload-zone-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                    </div>
+                    <p><strong>Arrastra un archivo</strong><br>o haz clic para seleccionar</p>
+                </div>
 
-<div class="panel">
-    <h2>Documentos</h2>
-    <table id="docTable">
-        <thead><tr><th>Nombre</th><th>Estado</th><th>Acción</th></tr></thead>
-        <tbody></tbody>
-    </table>
-</div>
+                <button class="btn-upload" id="btnUpload" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" width="14" height="14">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    Subir documento
+                </button>
+                <div class="upload-status" id="uploadStatus"></div>
+            </div>
 
-<div class="panel">
-    <h2>Chat</h2>
-    <div id="chatArea" style="height: 300px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px;"></div>
-    <div id="suggestions">
-        <button onclick="setQuery('¿Cuál es el ingreso neto?')">¿Cuál es el ingreso neto?</button>
-    </div>
-    <input type="text" id="chatInput" style="width: 80%">
-    <button onclick="sendMessage()">Enviar</button>
-</div>
+            <!-- Doc list -->
+            <div class="doc-list" id="docList">
+                <div class="doc-list-empty" id="emptyState">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" display="block" style="margin: 0 auto 8px">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Aún no hay documentos.<br>Sube uno para empezar.
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main: chat -->
+        <main class="main">
+            <div class="chat-header">
+                <div>
+                    <div class="chat-header-title">Consulta tus documentos</div>
+                    <div class="chat-header-sub">Hazle preguntas en lenguaje natural</div>
+                </div>
+            </div>
+
+            <div class="chat-messages" id="chatMessages">
+                <!-- Empty state shown by default -->
+                <div class="chat-empty" id="chatEmpty">
+                    <div class="chat-empty-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                    </div>
+                    <h3>¿Qué quieres saber?</h3>
+                    <p>Sube un documento y haz tu primera pregunta. DocQuery buscará la respuesta en el contenido del archivo.</p>
+                </div>
+            </div>
+
+            <div class="chat-footer">
+                <div class="suggestions" id="suggestions">
+                    <button class="suggestion-chip" onclick="setQuery('¿Cuál es el ingreso neto?')">¿Cuál es el ingreso neto?</button>
+                    <button class="suggestion-chip" onclick="setQuery('Resume el documento')">Resume el documento</button>
+                    <button class="suggestion-chip" onclick="setQuery('¿Cuáles son las conclusiones principales?')">Conclusiones principales</button>
+                </div>
+                <div class="chat-input-row">
+                    <textarea
+                        class="chat-input-box"
+                        id="chatInput"
+                        placeholder="Escribe tu pregunta…"
+                        rows="1"
+                    ></textarea>
+                    <button class="btn-send" id="btnSend" title="Enviar">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </main>
 
 <script>
+    /* ── State ── */
+    const docs = [];
+
+    /* ── Upload ── */
+    const fileInput  = document.getElementById('fileInput');
+    const btnUpload  = document.getElementById('btnUpload');
+    const uploadZone = document.getElementById('uploadZone');
+    const uploadStatus = document.getElementById('uploadStatus');
+
+    fileInput.addEventListener('change', () => {
+        btnUpload.disabled = !fileInput.files.length;
+        if (fileInput.files.length) {
+            uploadZone.querySelector('p').innerHTML =
+                `<strong>${fileInput.files[0].name}</strong>`;
+        }
+    });
+
+    // Drag-and-drop
+    uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+    uploadZone.addEventListener('drop', e => {
+        e.preventDefault();
+        uploadZone.classList.remove('drag-over');
+        if (e.dataTransfer.files.length) {
+            fileInput.files = e.dataTransfer.files;
+            fileInput.dispatchEvent(new Event('change'));
+        }
+    });
+
+    btnUpload.addEventListener('click', uploadFile);
+
     async function uploadFile() {
-        const file = document.getElementById('fileInput').files[0];
+        const file = fileInput.files[0];
         if (!file) return;
+
+        setUploadStatus('Subiendo…', '');
+        btnUpload.disabled = true;
+
+        // Optimistic: add to list as "processing"
+        const docId = Date.now();
+        addDocToList({ id: docId, name: file.name, status: 'processing', size: file.size });
+
         const formData = new FormData();
         formData.append('file', file);
-        document.getElementById('uploadStatus').innerText = 'Subiendo...';
-        
-        const res = await fetch('/upload', { method: 'POST', body: formData });
-        if (res.ok) document.getElementById('uploadStatus').innerText = 'Subido, procesando...';
-        else document.getElementById('uploadStatus').innerText = 'Error.';
+
+        try {
+            const res = await fetch('/upload', { method: 'POST', body: formData });
+            if (res.ok) {
+                setUploadStatus('Documento subido.', 'success');
+                updateDocStatus(docId, 'ready');
+            } else {
+                setUploadStatus('Error al subir.', 'error');
+                updateDocStatus(docId, 'error');
+            }
+        } catch {
+            setUploadStatus('Sin conexión.', 'error');
+            updateDocStatus(docId, 'error');
+        }
+
+        // Reset
+        fileInput.value = '';
+        uploadZone.querySelector('p').innerHTML = '<strong>Arrastra un archivo</strong><br>o haz clic para seleccionar';
+        btnUpload.disabled = true;
     }
 
-    async function sendMessage() {
-        const question = document.getElementById('chatInput').value;
-        document.getElementById('chatArea').innerHTML += `<p><b>Tú:</b> ${question}</p>`;
-        
-        const res = await fetch('/chat', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({question})
-        });
-        const data = await res.json();
-        document.getElementById('chatArea').innerHTML += `<p><b>Bot:</b> ${data.answer}</p>`;
+    function setUploadStatus(msg, type) {
+        uploadStatus.textContent = msg;
+        uploadStatus.className = 'upload-status' + (type ? ' ' + type : '');
+        if (type === 'success') setTimeout(() => { uploadStatus.textContent = ''; }, 3000);
     }
-    
-    function setQuery(q) { document.getElementById('chatInput').value = q; }
+
+    function addDocToList(doc) {
+        docs.push(doc);
+        renderDocList();
+    }
+
+    function updateDocStatus(id, status) {
+        const doc = docs.find(d => d.id === id);
+        if (doc) { doc.status = status; renderDocList(); }
+    }
+
+    function renderDocList() {
+        const list   = document.getElementById('docList');
+        const empty  = document.getElementById('emptyState');
+        if (!docs.length) { empty.style.display = ''; return; }
+        empty.style.display = 'none';
+
+        // Keep empty state node, re-render items
+        list.querySelectorAll('.doc-item').forEach(n => n.remove());
+
+        docs.forEach(doc => {
+            const statusLabel = { ready: 'Listo', processing: 'Procesando…', error: 'Error' }[doc.status];
+            const sizeLabel   = doc.size ? formatBytes(doc.size) : '';
+
+            const item = document.createElement('div');
+            item.className = 'doc-item';
+            item.dataset.id = doc.id;
+            item.innerHTML = `
+                <div class="doc-item-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                </div>
+                <div class="doc-item-info">
+                    <div class="doc-item-name">${escHtml(doc.name)}</div>
+                    <div class="doc-item-meta">${statusLabel}${sizeLabel ? ' · ' + sizeLabel : ''}</div>
+                </div>
+                <span class="status-dot ${doc.status}"></span>
+                <button class="btn-delete" title="Eliminar" onclick="removeDoc(${doc.id})">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            `;
+            list.appendChild(item);
+        });
+    }
+
+    function removeDoc(id) {
+        const idx = docs.findIndex(d => d.id === id);
+        if (idx !== -1) docs.splice(idx, 1);
+        renderDocList();
+    }
+
+    function formatBytes(b) {
+        if (b < 1024) return b + ' B';
+        if (b < 1048576) return (b / 1024).toFixed(0) + ' KB';
+        return (b / 1048576).toFixed(1) + ' MB';
+    }
+
+    /* ── Chat ── */
+    const chatMessages = document.getElementById('chatMessages');
+    const chatEmpty    = document.getElementById('chatEmpty');
+    const chatInput    = document.getElementById('chatInput');
+    const btnSend      = document.getElementById('btnSend');
+
+    // Auto-grow textarea
+    chatInput.addEventListener('input', () => {
+        chatInput.style.height = 'auto';
+        chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
+    });
+
+    // Send on Enter (Shift+Enter = newline)
+    chatInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    });
+
+    btnSend.addEventListener('click', sendMessage);
+
+    async function sendMessage() {
+        const question = chatInput.value.trim();
+        if (!question) return;
+
+        // Hide empty state
+        chatEmpty.style.display = 'none';
+
+        // Hide suggestions after first message
+        document.getElementById('suggestions').style.display = 'none';
+
+        appendMessage('user', question);
+        chatInput.value = '';
+        chatInput.style.height = 'auto';
+        btnSend.disabled = true;
+
+        // Typing indicator
+        const typingEl = appendTyping();
+
+        try {
+            const res = await fetch('/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question })
+            });
+            const data = await res.json();
+            typingEl.remove();
+            appendMessage('bot', data.answer || 'Sin respuesta.');
+        } catch {
+            typingEl.remove();
+            appendMessage('bot', 'Error de conexión. Intenta de nuevo.');
+        }
+
+        btnSend.disabled = false;
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function appendMessage(role, text) {
+        const isUser = role === 'user';
+        const msg = document.createElement('div');
+        msg.className = `message ${role}`;
+        msg.innerHTML = `
+            <div class="message-avatar">${isUser ? 'Tú' : 'AI'}</div>
+            <div class="message-bubble">${escHtml(text)}</div>
+        `;
+        chatMessages.appendChild(msg);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        return msg;
+    }
+
+    function appendTyping() {
+        const msg = document.createElement('div');
+        msg.className = 'message bot';
+        msg.innerHTML = `
+            <div class="message-avatar">AI</div>
+            <div class="message-bubble">
+                <div class="typing-indicator">
+                    <span></span><span></span><span></span>
+                </div>
+            </div>
+        `;
+        chatMessages.appendChild(msg);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        return msg;
+    }
+
+    function setQuery(q) {
+        chatInput.value = q;
+        chatInput.focus();
+        chatInput.dispatchEvent(new Event('input'));
+    }
+
+    function escHtml(str) {
+        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
 </script>
 {% endblock %}
