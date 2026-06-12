@@ -49,7 +49,7 @@ async def health():
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="index.html")
 
 @app.post("/upload")
 async def upload_document(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
