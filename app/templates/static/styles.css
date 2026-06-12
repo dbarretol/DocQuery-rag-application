@@ -488,7 +488,7 @@ html, body {
 /* ── Chat input area ── */
 .chat-footer {
     padding: 16px 24px;
-    background: var(--white);
+    background: var(--uni-yellow);
     border-top: 1px solid var(--border);
 }
 
