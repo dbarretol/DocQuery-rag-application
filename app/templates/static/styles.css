@@ -555,7 +555,7 @@ html, body {
     background: var(--uni-red);
     color: #fff;
     border: none;
-    border-radius: var(--radius-md);
+    border-radius: 50%;
     cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
@@ -565,7 +565,11 @@ html, body {
 .btn-send:hover { background: #660303; }
 .btn-send:active { transform: scale(.95); }
 .btn-send:disabled { opacity: .4; cursor: default; }
-.btn-send svg { width: 18px; height: 18px; }
+.btn-send svg { 
+    width: 18px; 
+    height: 18px; 
+    transform: rotate(45deg); 
+}
 
 /* ── Modal ── */
 .modal-overlay {
