@@ -41,20 +41,20 @@ Entorno: Python con `uv`, PowerShell en Windows.
 
 > Esta es la fase crítica. Completar antes de tocar Docker o CI/CD.
 
-- [ ] **`storage/chroma.py`:** cliente ChromaDB apuntando a `/data/chroma` (configurable vía env `CHROMA_PATH`, default `./data/chroma` para desarrollo local).
-- [ ] **`rag/ingest.py`:** pipeline completo:
-  - [ ] Extracción PDF con PyMuPDF (texto por página + imágenes a base64).
-  - [ ] Extracción Markdown (texto plano).
-  - [ ] Descripción de imágenes vía Gemini (`gemini-1.5-flash`).
-  - [ ] Chunking por párrafos (tamaño configurable, default 500 tokens).
-  - [ ] Embeddings con `text-embedding-004` de Gemini SDK.
-  - [ ] Almacenamiento en ChromaDB con metadatos: `{filename, page, chunk_index, content_type}`.
-  - [ ] Manejo de estados: `UPLOADED → PROCESSING → INDEXED / ERROR`.
-- [ ] **`rag/retrieval.py`:** búsqueda semántica top-k en ChromaDB (default k=5).
-- [ ] **`rag/generation.py`:** construcción de prompt con contexto + llamada a `gemini-1.5-flash` + extracción de fuentes citadas.
-- [ ] **Integrar pipeline en `POST /upload`:** procesamiento asíncrono (background task de FastAPI).
-- [ ] **Integrar RAG en `POST /chat`:** retrieval + generation reales; respuesta incluye `{"answer": "...", "sources": [...]}`.
-- [ ] **`storage/gcs.py`:** sincronización opcional (descarga índice al arranque si `GCS_BUCKET` definido; sube tras indexar). No bloqueante: errores se loguean, no crashean el servidor.
+- [x] **`storage/chroma.py`:** cliente ChromaDB apuntando a `/data/chroma` (configurable vía env `CHROMA_PATH`, default `./data/chroma` para desarrollo local).
+- [x] **`rag/ingest.py`:** pipeline completo:
+  - [x] Extracción PDF con PyMuPDF (texto por página + imágenes a base64).
+  - [x] Extracción Markdown (texto plano).
+  - [x] Descripción de imágenes vía Gemini (revisar .\docs\gemini-models.md).
+  - [x] Chunking por párrafos (tamaño configurable, default 500 tokens).
+  - [x] Embeddings con gemini de Gemini SDK. (revisar .\docs\embeddings-gemini.md)
+  - [x] Almacenamiento en ChromaDB con metadatos: `{filename, page, chunk_index, content_type}`.
+  - [x] Manejo de estados: `UPLOADED → PROCESSING → INDEXED / ERROR`.
+- [x] **`rag/retrieval.py`:** búsqueda semántica top-k en ChromaDB (default k=5).
+- [x] **`rag/generation.py`:** construcción de prompt con contexto + llamada al modelo de generacion elegido por el usario + extracción de fuentes citadas.
+- [x] **Integrar pipeline en `POST /upload`:** procesamiento asíncrono (background task de FastAPI).
+- [x] **Integrar RAG en `POST /chat`:** retrieval + generation reales; respuesta incluye `{"answer": "...", "sources": [...]}`.
+- [x] **`storage/gcs.py`:** sincronización opcional (descarga índice al arranque si `GCS_BUCKET` definido; sube tras indexar). No bloqueante: errores se loguean, no crashean el servidor.
 
 **Validación:** subir un PDF real, hacer una pregunta sobre su contenido, verificar que la respuesta es pertinente y cita fuentes.
 

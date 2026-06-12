@@ -1,0 +1,33 @@
+models:
+  generation:
+    default: "gemini-2.5-flash"
+    options:
+      - name: "gemini-2.5-flash-lite"
+        cost: "$"
+        description: "Modelo más pequeño y rentable, diseñado para uso masivo"
+      - name: "gemini-3.1-flash-lite"
+        cost: "$$"
+        description: "Optimizado para tareas de alto volumen, traducción y procesamiento simple de datos"
+      - name: "gemini-2.5-flash"
+        cost: "$$$"
+        description: "Primer modelo híbrido de razonamiento con ventana de contexto de 1M tokens"
+      - name: "gemini-3-flash-preview"
+        cost: "$$$"
+        description: "Modelo inteligente construido para velocidad, con grounding superior"
+      - name: "gemini-3.1-flash-live-preview"
+        cost: "$$$$"
+        description: "Modelo de baja latencia optimizado para diálogo en tiempo real"
+      - name: "gemini-3.5-flash"
+        cost: "$$$$$"
+        description: "Modelo más inteligente construido para la velocidad, combinando inteligencia de frontera con búsqueda y grounding superior"
+      - name: "gemini-2.5-pro"
+        cost: "$$$$$$"
+        description: "Modelo multipropósito de última generación, excelente en programación y razonamiento complejo"
+
+  embeddings:
+    default: "gemini-embedding-2"
+    options:
+      - name: "gemini-embedding-2"
+        description: "Embedding multimodal para texto, imágenes, video, audio y PDF"
+      - name: "gemini-embedding-001"
+        description: "Embedding para casos de uso solo de texto"
