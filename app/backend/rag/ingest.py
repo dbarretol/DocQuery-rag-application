@@ -1,6 +1,6 @@
 import os
 import fitz
-import google.generativeai as genai
+from google import genai
 from typing import List
 import logging
 import io
@@ -12,8 +12,7 @@ from app.backend.config_loader import get_generation_model, get_embedding_model
 logger = logging.getLogger("uvicorn")
 
 # Configure Gemini
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel(get_generation_model())
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", "dummy_key"))
 
 def chunk_text(text: str, chunk_size: int = 500) -> List[str]:
     """Simple chunking by character count (approx tokens)."""
@@ -23,7 +22,10 @@ def chunk_text(text: str, chunk_size: int = 500) -> List[str]:
 async def describe_image(image_bytes: bytes) -> str:
     """Generate image description using Gemini."""
     image = PILImage.open(io.BytesIO(image_bytes))
-    response = model.generate_content(["Explain what is going on in the image.", image])
+    response = client.models.generate_content(
+        model=get_generation_model(),
+        contents=["Explain what is going on in the image.", image]
+    )
     return response.text
 
 async def ingest_document(file_path: str, filename: str):
@@ -45,7 +47,8 @@ async def ingest_document(file_path: str, filename: str):
                 chunks = chunk_text(text)
                 
                 for i, chunk in enumerate(chunks):
-                    embedding = genai.embed_content(model=embedding_model_name, content=chunk, task_type="retrieval_document")["embedding"]
+                    response = client.models.embed_content(model=embedding_model_name, contents=chunk)
+                    embedding = response.embeddings[0].values
                     collection.add(
                         documents=[chunk],
                         metadatas=[{"filename": filename, "page": page_num, "chunk_index": i, "content_type": "text", "status": "INDEXED"}],
@@ -60,7 +63,8 @@ async def ingest_document(file_path: str, filename: str):
                     if pix.colorspace and pix.colorspace.n > 3: pix = fitz.Pixmap(fitz.csRGB, pix)
                     description = await describe_image(pix.tobytes("png"))
                     
-                    embedding = genai.embed_content(model=embedding_model_name, content=description, task_type="retrieval_document")["embedding"]
+                    response = client.models.embed_content(model=embedding_model_name, contents=description)
+                    embedding = response.embeddings[0].values
                     collection.add(
                         documents=[description],
                         metadatas=[{"filename": filename, "page": page_num, "img_index": img_index, "content_type": "image", "status": "INDEXED"}],
@@ -73,7 +77,8 @@ async def ingest_document(file_path: str, filename: str):
                 text = f.read()
             chunks = chunk_text(text)
             for i, chunk in enumerate(chunks):
-                embedding = genai.embed_content(model=embedding_model_name, content=chunk, task_type="retrieval_document")["embedding"]
+                response = client.models.embed_content(model=embedding_model_name, contents=chunk)
+                embedding = response.embeddings[0].values
                 collection.add(
                     documents=[chunk],
                     metadatas=[{"filename": filename, "page": 0, "chunk_index": i, "content_type": "markdown", "status": "INDEXED"}],

@@ -2,7 +2,7 @@ from google import genai
 import os
 from app.backend.config_loader import get_generation_model
 
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", "dummy_key"))
 
 def generate_answer(query: str, context: dict, model_name: str = None):
     # context structure from retrieval: {'documents': [[...]], 'metadatas': [[...]]}
