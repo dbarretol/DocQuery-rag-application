@@ -36,10 +36,9 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
     embedding_model_name = embedding_model or get_embedding_model()
     
     try:
-        # Determine content type
-        content_type = "pdf" if filename.lower().endswith(".pdf") else "markdown"
+        ext = os.path.splitext(filename)[1].lower()
         
-        if content_type == "pdf":
+        if ext == ".pdf":
             doc = fitz.open(file_path)
             for page_num in range(len(doc)):
                 page = doc[page_num]
@@ -71,8 +70,7 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
                         ids=[f"{filename}_{page_num}_{img_index}_image"],
                         embeddings=[embedding]
                     )
-        else:
-            # Markdown extraction
+        elif ext in [".md", ".txt"]:
             with open(file_path, "r", encoding="utf-8") as f:
                 text = f.read()
             chunks = chunk_text(text)
@@ -85,6 +83,22 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
                     ids=[f"{filename}_{i}_md"],
                     embeddings=[embedding]
                 )
+        elif ext in [".png", ".jpg", ".jpeg"]:
+            with open(file_path, "rb") as f:
+                img_bytes = f.read()
+            description = await describe_image(img_bytes, generation_model)
+            
+            response = client.models.embed_content(model=embedding_model_name, contents=description)
+            embedding = response.embeddings[0].values
+            collection.add(
+                documents=[description],
+                metadatas=[{"filename": filename, "page": 0, "content_type": "image", "status": "INDEXED"}],
+                ids=[f"{filename}_image"],
+                embeddings=[embedding]
+            )
+        else:
+            logger.warning(f"Unsupported file type: {ext}")
+            return "ERROR"
         
         logger.info(f"Successfully indexed document: {filename}")
         upload_index(os.getenv("CHROMA_PATH", "./data/chroma"))

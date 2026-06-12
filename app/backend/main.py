@@ -2,6 +2,7 @@ import logging
 import sys
 import shutil
 import os
+from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File, BackgroundTasks
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -16,6 +17,7 @@ from app.backend.storage.gcs import download_index
 from app.backend.config_loader import config
 
 # Setup JSON Logging for Cloud Run compatibility
+load_dotenv()
 logger = logging.getLogger("uvicorn")
 handler = logging.StreamHandler(sys.stdout)
 formatter = json.JsonFormatter(
@@ -70,11 +72,7 @@ async def upload_document(
     
     background_tasks.add_task(ingest_document, file_path, file.filename, generation_model, embedding_model)
     
-    logger.info("Received file, queued for processing", extra={
-        "filename": file.filename, 
-        "gen_model": generation_model, 
-        "emb_model": embedding_model
-    })
+    logger.info(f"Received file, queued for processing: {file.filename} (gen: {generation_model}, emb: {embedding_model})")
     return {"message": "Document accepted for processing", "filename": file.filename}
 
 @app.get("/documents")
@@ -83,7 +81,7 @@ async def list_documents():
 
 @app.delete("/documents/{doc_id}")
 async def delete_document(doc_id: str):
-    logger.info("Deleting document", extra={"doc_id": doc_id})
+    logger.info(f"Deleting document: {doc_id}")
     return {"message": f"Document {doc_id} deleted"}
 
 @app.post("/chat")
@@ -94,7 +92,7 @@ async def chat(data: dict):
     if not question:
         return {"error": "Question is required"}
         
-    logger.info("Received chat query", extra={"question": question, "gen_model": generation_model})
+    logger.info(f"Received chat query: {question} (gen: {generation_model})")
     
     # Retrieval
     context = retrieve_context(question)
