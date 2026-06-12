@@ -1,19 +1,62 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Multimodal RAG Platform</title>
-</head>
-<body>
-    <h1>Multimodal RAG Platform</h1>
-    <h2>Upload Document</h2>
-    <form action="/upload" method="post" enctype="multipart/form-data">
-        <input type="file" name="file">
-        <button type="submit">Upload</button>
-    </form>
+{% extends "base.html" %}
+
+{% block content %}
+<div class="panel">
+    <h2>Configuración</h2>
+    <input type="text" id="gcsBucket" placeholder="GCS_BUCKET">
+</div>
+
+<div class="panel">
+    <h2>Subir Documentos</h2>
+    <input type="file" id="fileInput">
+    <button onclick="uploadFile()">Subir</button>
+    <div id="uploadStatus"></div>
+</div>
+
+<div class="panel">
+    <h2>Documentos</h2>
+    <table id="docTable">
+        <thead><tr><th>Nombre</th><th>Estado</th><th>Acción</th></tr></thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<div class="panel">
     <h2>Chat</h2>
-    <form action="/chat" method="post">
-        <input type="text" name="question">
-        <button type="submit">Chat</button>
-    </form>
-</body>
-</html>
+    <div id="chatArea" style="height: 300px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px;"></div>
+    <div id="suggestions">
+        <button onclick="setQuery('¿Cuál es el ingreso neto?')">¿Cuál es el ingreso neto?</button>
+    </div>
+    <input type="text" id="chatInput" style="width: 80%">
+    <button onclick="sendMessage()">Enviar</button>
+</div>
+
+<script>
+    async function uploadFile() {
+        const file = document.getElementById('fileInput').files[0];
+        if (!file) return;
+        const formData = new FormData();
+        formData.append('file', file);
+        document.getElementById('uploadStatus').innerText = 'Subiendo...';
+        
+        const res = await fetch('/upload', { method: 'POST', body: formData });
+        if (res.ok) document.getElementById('uploadStatus').innerText = 'Subido, procesando...';
+        else document.getElementById('uploadStatus').innerText = 'Error.';
+    }
+
+    async function sendMessage() {
+        const question = document.getElementById('chatInput').value;
+        document.getElementById('chatArea').innerHTML += `<p><b>Tú:</b> ${question}</p>`;
+        
+        const res = await fetch('/chat', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({question})
+        });
+        const data = await res.json();
+        document.getElementById('chatArea').innerHTML += `<p><b>Bot:</b> ${data.answer}</p>`;
+    }
+    
+    function setQuery(q) { document.getElementById('chatInput').value = q; }
+</script>
+{% endblock %}

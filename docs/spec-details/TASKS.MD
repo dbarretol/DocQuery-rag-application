@@ -62,11 +62,11 @@ Entorno: Python con `uv`, PowerShell en Windows.
 
 ## Fase 4: UI (Jinja2)
 
-- [ ] Página principal: formulario de chat + área de respuesta con fuentes.
-- [ ] Panel de upload: drag & drop o file input, barra de progreso/estado.
-- [ ] Panel de documentos: tabla con nombre, estado (INDEXED/ERROR), botón de borrar.
-- [ ] UI de configuración: input de `GCS_BUCKET` (solo este campo; API key nunca en UI).
-- [ ] Preguntas sugeridas: botones de ejemplo que auto-completan el chat.
+- [x] Página principal: formulario de chat + área de respuesta con fuentes.
+- [x] Panel de upload: drag & drop o file input, barra de progreso/estado.
+- [x] Panel de documentos: tabla con nombre, estado (INDEXED/ERROR), botón de borrar.
+- [x] UI de configuración: input de `GCS_BUCKET` (solo este campo; API key nunca en UI).
+- [x] Preguntas sugeridas: botones de ejemplo que auto-completan el chat.
 
 **Validación:** flujo completo manual: subir → esperar INDEXED → preguntar → ver respuesta con citas.
 
