@@ -3,10 +3,11 @@ from app.backend.storage.chroma import get_chroma_client
 from app.backend.config_loader import get_embedding_model
 from app.backend.rag.utils import get_client
 from app.backend.rag.retry_config import retry_on_api_errors
+from app.backend.rag.models import RAGContext, DocumentChunk
 
 logger = logging.getLogger("uvicorn")
 
-def retrieve_context(query: str, k: int = 5):
+def retrieve_context(query: str, k: int = 5) -> RAGContext:
     logger.info(f"Retrieving context for query: '{query}'")
     client = get_client()
     
@@ -29,5 +30,20 @@ def retrieve_context(query: str, k: int = 5):
         query_embeddings=[embedding],
         n_results=k
     )
-    logger.info(f"Retrieved {len(results.get('documents', [[]])[0])} documents from ChromaDB.")
-    return results
+    
+    docs = results.get("documents", [[]])[0]
+    metadatas = results.get("metadatas", [[]])[0]
+    ids = results.get("ids", [[]])[0]
+    
+    chunks = []
+    for doc, meta, doc_id in zip(docs, metadatas, ids):
+        chunks.append(DocumentChunk(
+            id=doc_id,
+            content=doc,
+            filename=meta.get("filename", "Unknown"),
+            page=meta.get("page", "Unknown"),
+            content_type=meta.get("content_type", "text")
+        ))
+    
+    logger.info(f"Retrieved {len(chunks)} documents from ChromaDB.")
+    return RAGContext(chunks=chunks)
