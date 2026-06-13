@@ -18,6 +18,7 @@ from app.backend.rag.generation import generate_answer, generate_suggestions
 from app.backend.storage.gcs import download_index
 from app.backend.storage.chroma import get_chroma_client
 from app.backend.config_loader import config, settings
+from app.backend.api_models import ChatRequest, ChatResponse, SuggestionRequest, SuggestionResponse
 
 load_dotenv()
 
@@ -148,15 +149,12 @@ async def delete_document(filename: str):
         
     return {"message": f"Document {filename} deleted"}
 
-@app.post("/chat")
-async def chat(data: dict):
-    question = data.get("question")
-    generation_model = data.get("generation_model")
-    language = data.get("language", "Spanish")
+@app.post("/chat", response_model=ChatResponse)
+async def chat(data: ChatRequest):
+    question = data.question
+    generation_model = data.generation_model
+    language = data.language
     
-    if not question:
-        return {"error": "Question is required"}
-        
     logger.info(f"Received chat query: {question} (gen: {generation_model}, lang: {language})")
     
     # Retrieval
@@ -167,15 +165,12 @@ async def chat(data: dict):
     
     return response
 
-@app.post("/chat/suggestions")
-async def chat_suggestions(data: dict):
-    question = data.get("question")
-    answer = data.get("answer")
-    language = data.get("language", "Spanish")
+@app.post("/chat/suggestions", response_model=SuggestionResponse)
+async def chat_suggestions(data: SuggestionRequest):
+    question = data.question
+    answer = data.answer
+    language = data.language
     
-    if not question or not answer:
-        return {"error": "Question and answer are required"}
-        
     logger.info(f"Generating suggestions for: {question}")
     
     # Retrieval (to get context for suggestions)
