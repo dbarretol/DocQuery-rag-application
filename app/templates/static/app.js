@@ -438,23 +438,52 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             chatMessages.appendChild(botMessage);
             chatMessages.scrollTop = chatMessages.scrollHeight;
-        } catch (err) {
+
+            // Fetch and show dynamic suggestions
+            fetchDynamicSuggestions(question, data.answer);
+            } catch (err) {
             typingEl.remove();
             if (err.name === 'AbortError') {
                 appendMessage('bot', 'Consulta cancelada.');
             } else {
                 appendMessage('bot', 'Error de conexión. Intenta de nuevo.');
             }
-        }
+            }
 
-        // Reset button
-        abortController = null;
-        btnSend.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+            // Reset button
+            abortController = null;
+            btnSend.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                         </svg>`;
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
 
+            async function fetchDynamicSuggestions(question, answer) {
+            const suggestionsContainer = document.getElementById('suggestions');
+            suggestionsContainer.style.display = 'none'; // Temporarily hide while loading
+
+            try {
+            const res = await fetch('/chat/suggestions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    question,
+                    answer,
+                    language: config.language
+                })
+            });
+            const data = await res.json();
+
+            if (data.suggestions && data.suggestions.length > 0) {
+                suggestionsContainer.innerHTML = data.suggestions.map(s => 
+                    `<button class="suggestion-chip" onclick="setQuery('${s.replace(/'/g, "\\'")}')">${s}</button>`
+                ).join('');
+                suggestionsContainer.style.display = 'flex';
+            }
+            } catch (err) {
+            console.error('Error fetching suggestions:', err);
+            }
+            }
     function appendMessage(role, text) {
         const isUser = role === 'user';
         const msg = document.createElement('div');

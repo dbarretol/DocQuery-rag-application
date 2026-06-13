@@ -14,7 +14,7 @@ from starlette.requests import Request
 from pythonjsonlogger import json
 from app.backend.rag.ingest import ingest_document
 from app.backend.rag.retrieval import retrieve_context
-from app.backend.rag.generation import generate_answer
+from app.backend.rag.generation import generate_answer, generate_suggestions
 from app.backend.storage.gcs import download_index
 from app.backend.storage.chroma import get_chroma_client
 from app.backend.config_loader import config
@@ -166,6 +166,25 @@ async def chat(data: dict):
     response = generate_answer(question, context, generation_model, language)
     
     return response
+
+@app.post("/chat/suggestions")
+async def chat_suggestions(data: dict):
+    question = data.get("question")
+    answer = data.get("answer")
+    language = data.get("language", "Spanish")
+    
+    if not question or not answer:
+        return {"error": "Question and answer are required"}
+        
+    logger.info(f"Generating suggestions for: {question}")
+    
+    # Retrieval (to get context for suggestions)
+    context = retrieve_context(question)
+    
+    # Generation
+    suggestions = generate_suggestions(question, answer, context, language)
+    
+    return {"suggestions": suggestions}
 
 # Instrumentator at the end
 Instrumentator().instrument(app).expose(app)

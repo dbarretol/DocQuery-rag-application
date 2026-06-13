@@ -37,3 +37,42 @@ def generate_answer(query: str, context: dict, model_name: str = None, language:
     logger.info("Answer generated successfully.")
     
     return {"answer": response.text, "sources": list(set(sources))}
+
+def generate_suggestions(question: str, answer: str, context: dict, language: str = "Spanish"):
+    logger.info("Generating follow-up suggestions.")
+    client = get_client()
+    
+    docs = context.get("documents", [[]])[0]
+    metadatas = context.get("metadatas", [[]])[0]
+    
+    formatted_context = ""
+    for doc, meta in zip(docs, metadatas):
+        formatted_context += f"{doc}\n"
+        
+    prompt = get_prompt("suggestion_generation").format(
+        context=formatted_context, 
+        question=question, 
+        answer=answer, 
+        language=language
+    )
+    
+    @retry_on_api_errors
+    def _call_gemini():
+        return client.models.generate_content(
+            model="gemini-2.5-flash-lite",
+            contents=prompt
+        )
+        
+    response = _call_gemini()
+    logger.info("Suggestions generated successfully.")
+    
+    # Simple JSON extraction as prompt asks for JSON array
+    import json
+    try:
+        # Clean response if it contains markdown code blocks
+        text = response.text.replace("```json", "").replace("```", "").strip()
+        suggestions = json.loads(text)
+        return suggestions
+    except Exception as e:
+        logger.error(f"Error parsing suggestions JSON: {e}")
+        return []
