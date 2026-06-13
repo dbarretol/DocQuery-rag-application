@@ -443,13 +443,17 @@ document.addEventListener('DOMContentLoaded', () => {
             
             let answerHtml = marked.parse(data.answer || 'Sin respuesta.');
             
-            // Process [n] citations in the text
-            answerHtml = answerHtml.replace(/\[(\d+)\]/g, (match, n) => {
-                const idx = parseInt(n) - 1;
-                if (data.sources && data.sources[idx]) {
-                    return `<a class="citation-link" onclick="openPassageModal('${data.sources[idx].id}')">${n}</a>`;
-                }
-                return match;
+            // Process [n] or [n, m] citations in the text
+            answerHtml = answerHtml.replace(/\[([\d,\s]+)\]/g, (match, group) => {
+                const numbers = group.split(',').map(n => n.trim());
+                const links = numbers.map(n => {
+                    const idx = parseInt(n) - 1;
+                    if (data.sources && data.sources[idx]) {
+                        return `<a class="citation-link" onclick="openPassageModal('${data.sources[idx].id}')">${n}</a>`;
+                    }
+                    return n;
+                });
+                return `[${links.join(', ')}]`;
             });
 
             botMessage.innerHTML = `
