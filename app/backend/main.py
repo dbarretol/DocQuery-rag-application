@@ -70,7 +70,8 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @app.on_event("startup")
 async def startup_event():
-    download_index(settings.CHROMA_PATH)
+    # download_index(settings.CHROMA_PATH)
+    pass
 
 @app.get("/health")
 async def health():
