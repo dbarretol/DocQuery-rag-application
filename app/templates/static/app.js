@@ -437,21 +437,53 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
             typingEl.remove();
 
-            // Render markdown with citation links
+            // Render markdown with sequential citation re-mapping
             const botMessage = document.createElement('div');
             botMessage.className = 'message bot';
             
-            let answerHtml = marked.parse(data.answer || 'Sin respuesta.');
+            let originalAnswer = data.answer || 'Sin respuesta.';
             
-            // Process [n] or [n, m] citations in the text
-            const citedIndices = new Set();
+            // 1. Identify used original indices
+            const citedOriginalIndices = new Set();
+            const citationRegex = /\[([\d,\s]+)\]/g;
+            let match;
+            while ((match = citationRegex.exec(originalAnswer)) !== null) {
+                match[1].split(',').forEach(n => {
+                    const idx = parseInt(n.trim()) - 1;
+                    if (data.sources && data.sources[idx]) {
+                        citedOriginalIndices.add(idx);
+                    }
+                });
+            }
+
+            // 2. Create sequential mapping
+            const sortedOriginalIndices = Array.from(citedOriginalIndices).sort((a, b) => a - b);
+            const indexMap = {}; // originalIdx -> sequentialIndex (1-based)
+            const mappedSources = sortedOriginalIndices.map((origIdx, i) => {
+                indexMap[origIdx] = i + 1;
+                return data.sources[origIdx];
+            });
+
+            // 3. Replace in the answer text using the new mapping
+            let processedAnswer = originalAnswer.replace(/\[([\d,\s]+)\]/g, (match, group) => {
+                const numbers = group.split(',').map(n => n.trim());
+                const mappedNumbers = numbers.map(n => {
+                    const origIdx = parseInt(n) - 1;
+                    return indexMap[origIdx] || n;
+                });
+                return `[${mappedNumbers.join(', ')}]`;
+            });
+
+            let answerHtml = marked.parse(processedAnswer);
+            
+            // 4. Convert citations to interactive links
             answerHtml = answerHtml.replace(/\[([\d,\s]+)\]/g, (match, group) => {
                 const numbers = group.split(',').map(n => n.trim());
                 const links = numbers.map(n => {
-                    const idx = parseInt(n) - 1;
-                    if (data.sources && data.sources[idx]) {
-                        citedIndices.add(idx);
-                        return `<a class="citation-link" onclick="openPassageModal('${data.sources[idx].id}')">${n}</a>`;
+                    const seqIdx = parseInt(n);
+                    const source = mappedSources[seqIdx - 1];
+                    if (source) {
+                        return `<a class="citation-link" onclick="openPassageModal('${source.id}')">${n}</a>`;
                     }
                     return n;
                 });
@@ -462,7 +494,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="message-avatar">AI</div>
                 <div class="message-bubble">
                     <div class="message-content">${answerHtml}</div>
-                    ${renderSources(data.sources, citedIndices)}
+                    ${renderSources(mappedSources)}
                 </div>
             `;
             chatMessages.appendChild(botMessage);
@@ -487,17 +519,14 @@ document.addEventListener('DOMContentLoaded', () => {
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-    function renderSources(sources, citedIndices) {
-        if (!sources || sources.length === 0 || citedIndices.size === 0) return '';
+    function renderSources(mappedSources) {
+        if (!mappedSources || mappedSources.length === 0) return '';
         
-        const sourceChips = sources.map((s, i) => {
-            if (!citedIndices.has(i)) return null;
-            return `
-                <button class="source-chip" onclick="openPassageModal('${s.id}')">
-                    [${i + 1}] ${escHtml(s.filename)}${s.page !== 'Unknown' ? ' (pág. ' + s.page + ')' : ''}
-                </button>
-            `;
-        }).filter(h => h !== null).join('');
+        const sourceChips = mappedSources.map((s, i) => `
+            <button class="source-chip" onclick="openPassageModal('${s.id}')">
+                [${i + 1}] ${escHtml(s.filename)}${s.page !== 'Unknown' ? ' (pág. ' + s.page + ')' : ''}
+            </button>
+        `).join('');
         
         return `<div class="source-list">${sourceChips}</div>`;
     }
