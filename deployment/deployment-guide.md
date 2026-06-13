@@ -4,24 +4,16 @@ Esta guía detalla los pasos necesarios para desplegar la aplicación DocQuery j
 
 ## 1. Requisitos Previos
 - **Docker** y **Docker Compose** instalados.
-- Iniciar **Docker Desktop**.
+- Iniciar **Docker Desktop** (asegúrate de que el icono de la ballena esté activo).
 - Clave de API de Google Gemini (`API_KEY`).
 
-## 2. Configuración de Variables de Entorno
-Crea un archivo `.env` en la raíz del proyecto basándote en `.env.example`:
+## 2. Configuración y Ejecución
+Para evitar problemas con variables de entorno en Windows/PowerShell y asegurar una correcta ejecución:
 
-```bash
-# .env
-API_KEY=tu_api_key_aqui
-```
+Ejecuta el siguiente comando en la raíz del proyecto, reemplazando `TU_GEMINI_API_KEY` por tu clave real:
 
-## 3. Despliegue de la Aplicación y Observabilidad
-Utilizamos Docker Compose para orquestar la aplicación, Prometheus y Grafana.
-
-Ejecuta el siguiente comando en la raíz:
-
-```bash
-docker-compose up --build
+```powershell
+$env:GEMINI_API_KEY="TU_GEMINI_API_KEY"; docker compose up --build
 ```
 
 ### Servicios iniciados:
@@ -31,17 +23,30 @@ docker-compose up --build
 | **Prometheus** | `9090` | Recopilación de métricas. |
 | **Grafana** | `3000` | Visualización (admin/admin). |
 
-## 4. Configuración de Observabilidad
-Para ver las métricas en Grafana:
+## 3. Verificación del Despliegue
 
-1. Accede a `http://localhost:3000` e inicia sesión con `admin/admin`.
-2. Ve a **Connections** > **Data sources**.
-3. Añade **Prometheus**.
-4. En URL, introduce: `http://prometheus:9090`.
-5. Haz clic en **Save & test**.
-6. Crea un nuevo **Dashboard** y añade paneles consultando las métricas disponibles (ej. `http_requests_total`).
+Para confirmar que todo funciona correctamente:
+
+### A. Verificar estado de los contenedores
+```powershell
+docker compose ps
+```
+*   Debes ver que los 3 servicios (`app`, `grafana`, `prometheus`) tengan estado **Up**.
+
+### B. Verificar logs de la aplicación
+```powershell
+docker compose logs app -f
+```
+*   Busca confirmación de que Uvicorn ha iniciado: `"Application startup complete."` y observa las peticiones a `/metrics` para confirmar que Prometheus está conectando.
+
+## 4. Configuración de Observabilidad en Grafana
+1. Accede a `http://localhost:3000` (usuario/pass: `admin/admin`).
+2. Ve a **Connections** > **Data sources** > **Add data source** > **Prometheus**.
+3. En **URL**, introduce: `http://prometheus:9090`.
+4. Haz clic en **Save & test**.
+5. Crea un nuevo **Dashboard** y añade paneles consultando métricas como `http_requests_total`.
 
 ## 5. Resolución de Problemas
-- **Logs de construcción:** Revisa la salida de `docker-compose up --build`. Se han añadido logs explícitos en el Dockerfile para identificar fallos durante `uv sync`.
-- **Logs de la aplicación:** La aplicación escribe logs en el volumen montado en `./logs/`.
-- **Acceso:** Si `app` no arranca, verifica que la `API_KEY` sea válida y no tenga espacios.
+- **Conflicto de archivos:** Si obtienes un `I/O error` en `.venv`, asegúrate de que `.venv` está excluido en `.dockerignore` y en los volúmenes del `docker-compose.yml`.
+- **Logs de construcción:** Si la app falla al arrancar, revisa los logs con `docker compose logs app`.
+- **Acceso:** Si no ves la app en `localhost:8000`, comprueba que Docker Desktop está ejecutándose.
