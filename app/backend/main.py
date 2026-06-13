@@ -18,7 +18,10 @@ from app.backend.rag.generation import generate_answer, generate_suggestions
 from app.backend.storage.gcs import download_index
 from app.backend.storage.chroma import get_chroma_client
 from app.backend.config_loader import config, settings
-from app.backend.api_models import ChatRequest, ChatResponse, SuggestionRequest, SuggestionResponse
+from app.backend.api_models import (
+    ChatRequest, ChatResponse, SuggestionRequest, SuggestionResponse,
+    UploadResponse, DocumentStatusResponse, KnowledgeBaseResponse, PassageResponse
+)
 
 load_dotenv()
 
@@ -80,7 +83,7 @@ async def get_config():
 async def read_root(request: Request):
     return templates.TemplateResponse(request=request, name="index.html")
 
-@app.post("/upload")
+@app.post("/upload", response_model=UploadResponse)
 async def upload_document(
     background_tasks: BackgroundTasks, 
     file: UploadFile = File(...),
@@ -96,7 +99,7 @@ async def upload_document(
     logger.info(f"Received file, queued for processing: {file.filename} (gen: {generation_model}, emb: {embedding_model})")
     return {"message": "Document accepted for processing", "filename": file.filename}
 
-@app.get("/document-status/{filename}")
+@app.get("/document-status/{filename}", response_model=DocumentStatusResponse)
 async def get_document_status(filename: str):
     status_path = os.path.join(UPLOAD_DIR, f"{filename}.status")
     
@@ -107,7 +110,7 @@ async def get_document_status(filename: str):
             
     return {"status": "NOT_FOUND"}
 
-@app.get("/knowledge-base")
+@app.get("/knowledge-base", response_model=KnowledgeBaseResponse)
 async def get_knowledge_base():
     chroma_client = get_chroma_client()
     collection = chroma_client.get_or_create_collection(name="documents")
@@ -181,7 +184,7 @@ async def chat_suggestions(data: SuggestionRequest):
     
     return {"suggestions": suggestions}
 
-@app.get("/passage/{passage_id}")
+@app.get("/passage/{passage_id}", response_model=PassageResponse)
 async def get_passage(passage_id: str):
     logger.info(f"Retrieving passage: {passage_id}")
     chroma_client = get_chroma_client()
