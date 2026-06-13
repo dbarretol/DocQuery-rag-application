@@ -494,7 +494,7 @@ html, body {
 
 /* ── Chat input area ── */
 .suggestions-area {
-    padding: 16px 24px 0;
+    padding: 16px 24px 16px;
     background: var(--surface);
 }
 
