@@ -2,6 +2,7 @@ import os
 import chromadb
 import logging
 from app.backend.config_loader import settings
+from app.backend.storage.models import StorageConfig
 
 logger = logging.getLogger("uvicorn")
 
@@ -14,7 +15,8 @@ def get_chroma_client():
     """
     global _chroma_client
     if _chroma_client is None:
-        path = settings.CHROMA_PATH
+        storage_config = StorageConfig(chroma_path=settings.CHROMA_PATH)
+        path = storage_config.chroma_path
 
         # Ensure the directory exists
         os.makedirs(path, exist_ok=True)
