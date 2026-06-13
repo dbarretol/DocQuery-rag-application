@@ -4,6 +4,7 @@ from app.backend.config_loader import get_embedding_model
 from app.backend.rag.utils import get_client
 from app.backend.rag.retry_config import retry_on_api_errors
 from app.backend.rag.models import RAGContext, DocumentChunk
+from app.backend.storage.models import storage_config
 
 logger = logging.getLogger("uvicorn")
 
@@ -25,7 +26,7 @@ def retrieve_context(query: str, k: int = 5) -> RAGContext:
     
     # 2. Query Chroma
     chroma_client = get_chroma_client()
-    collection = chroma_client.get_or_create_collection(name="documents")
+    collection = chroma_client.get_or_create_collection(name=storage_config.collection_name)
     results = collection.query(
         query_embeddings=[embedding],
         n_results=k

@@ -6,3 +6,6 @@ class GCSConfig(BaseModel):
 
 class StorageConfig(BaseModel):
     chroma_path: str = "./data/chroma"
+    collection_name: str = "documents"
+
+storage_config = StorageConfig()

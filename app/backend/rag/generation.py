@@ -1,4 +1,6 @@
 import logging
+import json
+from pydantic import TypeAdapter
 from app.backend.config_loader import get_generation_model, get_prompt
 from app.backend.rag.utils import get_client
 from app.backend.rag.retry_config import retry_on_api_errors
@@ -71,13 +73,13 @@ def generate_suggestions(question: str, answer: str, context: RAGContext, langua
     response = _call_gemini()
     logger.info("Suggestions generated successfully.")
     
-    # Simple JSON extraction as prompt asks for JSON array
-    import json
+    # Use TypeAdapter for robust validation
     try:
-        # Clean response if it contains markdown code blocks
         text = response.text.replace("```json", "").replace("```", "").strip()
-        suggestions = json.loads(text)
+        data = json.loads(text)
+        adapter = TypeAdapter(list[str])
+        suggestions = adapter.validate_python(data)
         return suggestions
     except Exception as e:
-        logger.error(f"Error parsing suggestions JSON: {e}")
+        logger.error(f"Error validating/parsing suggestions JSON: {e}")
         return []

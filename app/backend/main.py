@@ -22,6 +22,7 @@ from app.backend.api_models import (
     ChatRequest, ChatResponse, SuggestionRequest, SuggestionResponse,
     UploadResponse, DocumentStatusResponse, KnowledgeBaseResponse, PassageResponse
 )
+from app.backend.storage.models import storage_config
 
 load_dotenv()
 
@@ -113,7 +114,7 @@ async def get_document_status(filename: str):
 @app.get("/knowledge-base", response_model=KnowledgeBaseResponse)
 async def get_knowledge_base():
     chroma_client = get_chroma_client()
-    collection = chroma_client.get_or_create_collection(name="documents")
+    collection = chroma_client.get_or_create_collection(name=storage_config.collection_name)
     
     # Get all unique filenames from metadatas
     results = collection.get(include=["metadatas"])
@@ -136,7 +137,7 @@ async def delete_document(filename: str):
     
     # 1. Remove from ChromaDB
     chroma_client = get_chroma_client()
-    collection = chroma_client.get_or_create_collection(name="documents")
+    collection = chroma_client.get_or_create_collection(name=storage_config.collection_name)
     
     # Delete based on filename in metadata
     collection.delete(where={"filename": filename})
@@ -188,7 +189,7 @@ async def chat_suggestions(data: SuggestionRequest):
 async def get_passage(passage_id: str):
     logger.info(f"Retrieving passage: {passage_id}")
     chroma_client = get_chroma_client()
-    collection = chroma_client.get_or_create_collection(name="documents")
+    collection = chroma_client.get_or_create_collection(name=storage_config.collection_name)
     
     result = collection.get(ids=[passage_id])
     

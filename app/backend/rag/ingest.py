@@ -10,6 +10,7 @@ from app.backend.config_loader import get_generation_model, get_embedding_model,
 from app.backend.rag.utils import get_client
 from app.backend.rag.retry_config import retry_on_api_errors
 from app.backend.rag.models import ChunkMetadata, IngestionStatus
+from app.backend.storage.models import storage_config
 
 logger = logging.getLogger("uvicorn")
 
@@ -56,7 +57,7 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
 
     client = get_client()
     chroma_client = get_chroma_client()
-    collection = chroma_client.get_or_create_collection(name="documents")
+    collection = chroma_client.get_or_create_collection(name=storage_config.collection_name)
     logger.info("ChromaDB collection accessed/created.")
 
     @retry_on_api_errors
@@ -188,4 +189,3 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
         logger.error(f"--- INGESTION FAILED: {filename} ---")
         logger.exception(f"Details: {e}")
         return "ERROR"
-
