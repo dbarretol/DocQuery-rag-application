@@ -34,6 +34,40 @@ document.addEventListener('DOMContentLoaded', () => {
     btnCloseSettings.addEventListener('click', () => modalSettings.classList.remove('active'));
     modalSettings.addEventListener('click', (e) => { if (e.target === modalSettings) modalSettings.classList.remove('active'); });
 
+    /* ── GCS Sync Modal ── */
+    const modalGcsSync = document.getElementById('modalGcsSync');
+    const btnOpenGCS = document.getElementById('btnOpenGCS');
+    const btnCloseGcs = document.getElementById('btnCloseGcs');
+    const btnDownloadGcs = document.getElementById('btnDownloadGcs');
+    const btnUploadGcs = document.getElementById('btnUploadGcs');
+    const inputGcsBucket = document.getElementById('inputGcsBucket');
+
+    btnOpenGCS.addEventListener('click', () => modalGcsSync.classList.add('active'));
+    btnCloseGcs.addEventListener('click', () => modalGcsSync.classList.remove('active'));
+    modalGcsSync.addEventListener('click', (e) => { if(e.target === modalGcsSync) modalGcsSync.classList.remove('active'); });
+
+    async function syncGCS(endpoint) {
+        const bucketName = inputGcsBucket.value.trim();
+        if (!bucketName) { alert('Ingresa un bucket name'); return; }
+
+        try {
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bucket_name: bucketName })
+            });
+            const data = await res.json();
+            alert(data.message);
+            if (res.ok) modalGcsSync.classList.remove('active');
+        } catch (e) {
+            console.error('Sync error:', e);
+            alert('Error en la sincronización');
+        }
+    }
+
+    btnDownloadGcs.addEventListener('click', () => syncGCS('/sync/download'));
+    btnUploadGcs.addEventListener('click', () => syncGCS('/sync/upload'));
+
     let modelsConfig = {}; // Store config locally
 
     async function loadSettings() {

@@ -4,7 +4,7 @@ import logging
 import sys
 import shutil
 import datetime
-from fastapi import FastAPI, UploadFile, File, BackgroundTasks, Form
+from fastapi import FastAPI, UploadFile, File, BackgroundTasks, Form, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,9 +15,15 @@ from pythonjsonlogger import json
 from app.backend.rag.ingest import ingest_document
 from app.backend.rag.retrieval import retrieve_context
 from app.backend.rag.generation import generate_answer, generate_suggestions
-from app.backend.storage.gcs import download_index
+from app.backend.storage.gcs import download_index, upload_index
 from app.backend.storage.chroma import get_chroma_client
-from app.backend.config_loader import config
+from app.backend.config_loader import config, settings
+from app.backend.api_models import (
+    ChatRequest, ChatResponse, SuggestionRequest, SuggestionResponse,
+    UploadResponse, DocumentStatusResponse, KnowledgeBaseResponse, PassageResponse,
+    GCSConfigRequest
+)
+from app.backend.storage.models import storage_config
 
 load_dotenv()
 
@@ -64,7 +70,8 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @app.on_event("startup")
 async def startup_event():
-    download_index(os.getenv("CHROMA_PATH", "./data/chroma"))
+    # download_index(settings.CHROMA_PATH)
+    pass
 
 @app.get("/health")
 async def health():
@@ -79,7 +86,7 @@ async def get_config():
 async def read_root(request: Request):
     return templates.TemplateResponse(request=request, name="index.html")
 
-@app.post("/upload")
+@app.post("/upload", response_model=UploadResponse)
 async def upload_document(
     background_tasks: BackgroundTasks, 
     file: UploadFile = File(...),
@@ -95,7 +102,7 @@ async def upload_document(
     logger.info(f"Received file, queued for processing: {file.filename} (gen: {generation_model}, emb: {embedding_model})")
     return {"message": "Document accepted for processing", "filename": file.filename}
 
-@app.get("/document-status/{filename}")
+@app.get("/document-status/{filename}", response_model=DocumentStatusResponse)
 async def get_document_status(filename: str):
     status_path = os.path.join(UPLOAD_DIR, f"{filename}.status")
     
@@ -106,10 +113,10 @@ async def get_document_status(filename: str):
             
     return {"status": "NOT_FOUND"}
 
-@app.get("/knowledge-base")
+@app.get("/knowledge-base", response_model=KnowledgeBaseResponse)
 async def get_knowledge_base():
     chroma_client = get_chroma_client()
-    collection = chroma_client.get_or_create_collection(name="documents")
+    collection = chroma_client.get_or_create_collection(name=storage_config.collection_name)
     
     # Get all unique filenames from metadatas
     results = collection.get(include=["metadatas"])
@@ -132,7 +139,7 @@ async def delete_document(filename: str):
     
     # 1. Remove from ChromaDB
     chroma_client = get_chroma_client()
-    collection = chroma_client.get_or_create_collection(name="documents")
+    collection = chroma_client.get_or_create_collection(name=storage_config.collection_name)
     
     # Delete based on filename in metadata
     collection.delete(where={"filename": filename})
@@ -148,15 +155,12 @@ async def delete_document(filename: str):
         
     return {"message": f"Document {filename} deleted"}
 
-@app.post("/chat")
-async def chat(data: dict):
-    question = data.get("question")
-    generation_model = data.get("generation_model")
-    language = data.get("language", "Spanish")
+@app.post("/chat", response_model=ChatResponse)
+async def chat(data: ChatRequest):
+    question = data.question
+    generation_model = data.generation_model
+    language = data.language
     
-    if not question:
-        return {"error": "Question is required"}
-        
     logger.info(f"Received chat query: {question} (gen: {generation_model}, lang: {language})")
     
     # Retrieval
@@ -167,15 +171,12 @@ async def chat(data: dict):
     
     return response
 
-@app.post("/chat/suggestions")
-async def chat_suggestions(data: dict):
-    question = data.get("question")
-    answer = data.get("answer")
-    language = data.get("language", "Spanish")
+@app.post("/chat/suggestions", response_model=SuggestionResponse)
+async def chat_suggestions(data: SuggestionRequest):
+    question = data.question
+    answer = data.answer
+    language = data.language
     
-    if not question or not answer:
-        return {"error": "Question and answer are required"}
-        
     logger.info(f"Generating suggestions for: {question}")
     
     # Retrieval (to get context for suggestions)
@@ -186,16 +187,16 @@ async def chat_suggestions(data: dict):
     
     return {"suggestions": suggestions}
 
-@app.get("/passage/{passage_id}")
+@app.get("/passage/{passage_id}", response_model=PassageResponse)
 async def get_passage(passage_id: str):
     logger.info(f"Retrieving passage: {passage_id}")
     chroma_client = get_chroma_client()
-    collection = chroma_client.get_or_create_collection(name="documents")
+    collection = chroma_client.get_or_create_collection(name=storage_config.collection_name)
     
     result = collection.get(ids=[passage_id])
     
     if not result["documents"]:
-        return {"error": "Passage not found"}
+        raise HTTPException(status_code=404, detail="Passage not found")
         
     content = result["documents"][0]
     metadata = result["metadatas"][0]
@@ -205,6 +206,16 @@ async def get_passage(passage_id: str):
         "metadata": metadata,
         "type": metadata.get("content_type", "text")
     }
+
+@app.post("/sync/upload")
+async def sync_upload(data: GCSConfigRequest):
+    upload_index(settings.CHROMA_PATH, data.bucket_name)
+    return {"message": "Sync upload completed"}
+
+@app.post("/sync/download")
+async def sync_download(data: GCSConfigRequest):
+    download_index(settings.CHROMA_PATH, data.bucket_name)
+    return {"message": "Sync download completed"}
 
 # Instrumentator at the end
 Instrumentator().instrument(app).expose(app)
