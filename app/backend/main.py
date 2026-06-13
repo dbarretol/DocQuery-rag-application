@@ -15,12 +15,13 @@ from pythonjsonlogger import json
 from app.backend.rag.ingest import ingest_document
 from app.backend.rag.retrieval import retrieve_context
 from app.backend.rag.generation import generate_answer, generate_suggestions
-from app.backend.storage.gcs import download_index
+from app.backend.storage.gcs import download_index, upload_index
 from app.backend.storage.chroma import get_chroma_client
 from app.backend.config_loader import config, settings
 from app.backend.api_models import (
     ChatRequest, ChatResponse, SuggestionRequest, SuggestionResponse,
-    UploadResponse, DocumentStatusResponse, KnowledgeBaseResponse, PassageResponse
+    UploadResponse, DocumentStatusResponse, KnowledgeBaseResponse, PassageResponse,
+    GCSConfigRequest
 )
 from app.backend.storage.models import storage_config
 
@@ -204,6 +205,16 @@ async def get_passage(passage_id: str):
         "metadata": metadata,
         "type": metadata.get("content_type", "text")
     }
+
+@app.post("/sync/upload")
+async def sync_upload(data: GCSConfigRequest):
+    upload_index(settings.CHROMA_PATH, data.bucket_name)
+    return {"message": "Sync upload completed"}
+
+@app.post("/sync/download")
+async def sync_download(data: GCSConfigRequest):
+    download_index(settings.CHROMA_PATH, data.bucket_name)
+    return {"message": "Sync download completed"}
 
 # Instrumentator at the end
 Instrumentator().instrument(app).expose(app)

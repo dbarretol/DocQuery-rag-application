@@ -1,6 +1,8 @@
 from pydantic import BaseModel
 
-# --- Request Models ---
+class GCSConfigRequest(BaseModel):
+    bucket_name: str
+
 
 class ChatRequest(BaseModel):
     question: str
