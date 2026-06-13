@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     /* ── State ── */
+    // docs is keyed by filename to avoid duplicates across sessions
     const docs = [];
     let config = {
         generation_model: localStorage.getItem('gen_model') || '',
@@ -117,6 +118,51 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     loadSettings();
+    loadSidebarDocs(); // Hydrate sidebar from persistent ChromaDB on startup
+
+    /* ── Sidebar Persistence: bidirectional sync with ChromaDB ── */
+    async function loadSidebarDocs() {
+        console.log('[loadSidebarDocs] START — docs array before fetch:', docs.map(d => d.name));
+        try {
+            const res = await fetch('/knowledge-base');
+            if (!res.ok) {
+                console.error('[loadSidebarDocs] /knowledge-base returned', res.status);
+                return;
+            }
+            const data = await res.json();
+            const kbNames = new Set(data.documents.map(d => d.filename));
+            console.log('[loadSidebarDocs] KB returned:', [...kbNames]);
+            console.log('[loadSidebarDocs] docs array at resolution time:', docs.map(d => d.name));
+
+            // ── STEP 1: Remove 'ready' docs that are no longer in ChromaDB ──
+            // Iterate backwards so splices don't shift unvisited indices.
+            for (let i = docs.length - 1; i >= 0; i--) {
+                if (docs[i].status === 'ready' && !kbNames.has(docs[i].name)) {
+                    console.log('[loadSidebarDocs] Removing stale entry from sidebar:', docs[i].name);
+                    docs.splice(i, 1);
+                }
+            }
+
+            // ── STEP 2: Add KB docs not yet in the local array ──
+            const existingNames = new Set(docs.map(d => d.name));
+            data.documents.forEach(doc => {
+                if (!existingNames.has(doc.filename)) {
+                    console.log('[loadSidebarDocs] Adding new entry to sidebar:', doc.filename);
+                    docs.push({
+                        id: doc.filename,
+                        name: doc.filename,
+                        status: 'ready',
+                        size: null
+                    });
+                }
+            });
+
+            console.log('[loadSidebarDocs] END — docs array after sync:', docs.map(d => d.name));
+            renderDocList();
+        } catch (e) {
+            console.error('[loadSidebarDocs] Error:', e);
+        }
+    }
 
     /* ── Knowledge Base Management ── */
     const btnOpenKB = document.getElementById('btnOpenKB');
@@ -256,7 +302,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (data.status === 'INDEXED') {
                     clearInterval(interval);
-                    updateDocStatus(docId, 'ready');
+                    // Remove the temporary in-session entry and reload from KB
+                    // to ensure filename-based deduplication and correct stable IDs
+                    const idx = docs.findIndex(d => d.id === docId);
+                    if (idx !== -1) docs.splice(idx, 1);
+                    await loadSidebarDocs();
                     setUploadStatus('Documento indexado.', 'success');
                 } else if (data.status.startsWith('ERROR')) {
                     clearInterval(interval);
@@ -289,12 +339,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderDocList() {
         const list = document.getElementById('docList');
         const empty = document.getElementById('emptyState');
+
+        // Always remove stale DOM items FIRST — before any early return.
+        // Without this, the last item's element persists as a ghost when docs empties.
+        list.querySelectorAll('.doc-item').forEach(n => n.remove());
+
         if (!docs.length) { empty.style.display = ''; return; }
         empty.style.display = 'none';
 
-        // Keep empty state node, re-render items
-        list.querySelectorAll('.doc-item').forEach(n => n.remove());
-
+        // Re-render from current docs array
         docs.forEach(doc => {
             const statusLabel = { ready: 'Listo', processing: 'Procesando…', error: 'Error' }[doc.status];
             const sizeLabel = doc.size ? formatBytes(doc.size) : '';
@@ -313,7 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="doc-item-meta">${statusLabel}${sizeLabel ? ' · ' + sizeLabel : ''}</div>
                 </div>
                 <span class="status-dot ${doc.status}"></span>
-                <button class="btn-delete" title="Eliminar" onclick="removeDoc(${doc.id})">
+                <button class="btn-delete" title="Eliminar" onclick="removeDoc('${String(doc.id).replace(/'/g, "\\'")}')">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -324,42 +377,37 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     window.removeDoc = async function (id) {
-        const idx = docs.findIndex(d => d.id === id);
-        if (idx === -1) {
-            console.warn('Doc not found in local array:', id);
+        const docEntry = docs.find(d => String(d.id) === String(id));
+        if (!docEntry) {
+            console.warn('[removeDoc] Doc not found in local array for id:', id,
+                         '| Current docs:', docs.map(d => d.name));
             return;
         }
 
-        const doc = docs[idx];
-        console.log('Attempting to delete:', doc.name, 'with id:', id);
+        const docName = docEntry.name;
+        console.log('[removeDoc] Starting delete for:', docName,
+                    '| docs before splice:', docs.map(d => d.name));
 
         try {
-            const res = await fetch(`/documents/${encodeURIComponent(doc.name)}`, { method: 'DELETE' });
+            const res = await fetch(`/documents/${encodeURIComponent(docName)}`, { method: 'DELETE' });
             if (res.ok) {
-                console.log('Doc deleted on server, removing from DOM');
+                // Re-find index AFTER the await — concurrent deletes may have shifted positions.
+                const currentIdx = docs.findIndex(d => d.name === docName);
+                console.log('[removeDoc] DELETE 200 OK for:', docName,
+                            '| re-found idx:', currentIdx,
+                            '| docs at resolution:', docs.map(d => d.name));
+                if (currentIdx !== -1) docs.splice(currentIdx, 1);
+                console.log('[removeDoc] docs after splice:', docs.map(d => d.name));
 
-                // Remove from local array
-                docs.splice(idx, 1);
-
-                // Direct DOM manipulation
-                const docItem = document.querySelector(`.doc-item[data-id="${id}"]`);
-                if (docItem) {
-                    docItem.remove();
-                    console.log('DOM element removed');
-                } else {
-                    console.error('DOM element not found for id:', id);
-                }
-
-                // Re-check empty state
-                if (docs.length === 0) {
-                    document.getElementById('emptyState').style.display = '';
-                }
+                // Full bidirectional sync — handles any race where KB was already
+                // updated or still has the doc in-flight.
+                await loadSidebarDocs();
             } else {
-                console.error('Server failed to delete:', res.statusText);
+                console.error('[removeDoc] Server DELETE failed:', res.status, res.statusText);
                 alert('Error al eliminar el documento en servidor');
             }
         } catch (e) {
-            console.error('Delete error:', e);
+            console.error('[removeDoc] Network error:', e);
             alert('Error de conexión al eliminar');
         }
     };
@@ -561,11 +609,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-            async function fetchDynamicSuggestions(question, answer) {
-            const suggestionsContainer = document.getElementById('suggestions');
-            suggestionsContainer.style.display = 'none'; // Temporarily hide while loading
+    async function fetchDynamicSuggestions(question, answer) {
+        const suggestionsContainer = document.getElementById('suggestions');
+        suggestionsContainer.style.display = 'none'; // Temporarily hide while loading
 
-            try {
+        try {
             const res = await fetch('/chat/suggestions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -583,10 +631,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 ).join('');
                 suggestionsContainer.style.display = 'flex';
             }
-            } catch (err) {
+        } catch (err) {
             console.error('Error fetching suggestions:', err);
-            }
-            }
+        }
+    }
     function appendMessage(role, text) {
         const isUser = role === 'user';
         const msg = document.createElement('div');
