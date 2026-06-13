@@ -35,9 +35,11 @@ def retrieve_context(query: str, k: int = 5) -> RAGContext:
     docs = results.get("documents", [[]])[0]
     metadatas = results.get("metadatas", [[]])[0]
     ids = results.get("ids", [[]])[0]
+    distances = results.get("distances", [[]])[0]
     
     chunks = []
-    for doc, meta, doc_id in zip(docs, metadatas, ids):
+    for doc, meta, doc_id, dist in zip(docs, metadatas, ids, distances):
+        logger.debug(f"Retrieved chunk {doc_id} with distance {dist}")
         chunks.append(DocumentChunk(
             id=doc_id,
             content=doc,

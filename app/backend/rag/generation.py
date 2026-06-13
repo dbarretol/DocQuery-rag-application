@@ -5,10 +5,11 @@ from app.backend.config_loader import get_generation_model, get_prompt
 from app.backend.rag.utils import get_client
 from app.backend.rag.retry_config import retry_on_api_errors
 from app.backend.rag.models import RAGContext
+from app.backend.api_models import ChatResponse, Source
 
 logger = logging.getLogger("uvicorn")
 
-def generate_answer(query: str, context: RAGContext, model_name: str = None, language: str = "Spanish"):
+def generate_answer(query: str, context: RAGContext, model_name: str = None, language: str = "Spanish") -> ChatResponse:
     logger.info(f"Generating answer for: '{query}' (model: {model_name or get_generation_model()}, lang: {language})")
     client = get_client()
     
@@ -18,11 +19,11 @@ def generate_answer(query: str, context: RAGContext, model_name: str = None, lan
     for i, chunk in enumerate(context.chunks, 1):
         # Format context: content + citation
         formatted_context += f"Source [{i}]:\nContent: {chunk.content}\nSource: {chunk.filename}, Page: {chunk.page}\n\n"
-        sources.append({
-            "id": chunk.id,
-            "filename": chunk.filename,
-            "page": chunk.page
-        })
+        sources.append(Source(
+            id=chunk.id,
+            filename=chunk.filename,
+            page=chunk.page
+        ))
         
     prompt = get_prompt("answer_generation").format(context=formatted_context, query=query, language=language)
     
@@ -42,11 +43,11 @@ def generate_answer(query: str, context: RAGContext, model_name: str = None, lan
     unique_sources = []
     seen_ids = set()
     for s in sources:
-        if s["id"] not in seen_ids:
+        if s.id not in seen_ids:
             unique_sources.append(s)
-            seen_ids.add(s["id"])
+            seen_ids.add(s.id)
 
-    return {"answer": response.text, "sources": unique_sources}
+    return ChatResponse(answer=response.text, sources=unique_sources)
 
 def generate_suggestions(question: str, answer: str, context: RAGContext, language: str = "Spanish"):
     logger.info("Generating follow-up suggestions.")

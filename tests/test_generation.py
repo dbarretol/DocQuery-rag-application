@@ -1,6 +1,3 @@
-import pytest
-import json
-from pydantic import TypeAdapter
 from app.backend.rag.generation import generate_suggestions
 from unittest.mock import patch, MagicMock
 from app.backend.rag.models import RAGContext

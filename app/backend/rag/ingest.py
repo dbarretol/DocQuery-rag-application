@@ -92,7 +92,7 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
                     
                     collection.add(
                         documents=[chunk],
-                        metadatas=[metadata.model_dump()],
+                        metadatas=[metadata.model_dump(mode='json', exclude_none=True)],
                         ids=[f"{filename}_{page_num}_{i}_text"],
                         embeddings=[embedding]
                     )
@@ -121,7 +121,7 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
                     
                     collection.add(
                         documents=[description],
-                        metadatas=[metadata.model_dump()],
+                        metadatas=[metadata.model_dump(mode='json', exclude_none=True)],
                         ids=[f"{filename}_{page_num}_{img_index}_image"],
                         embeddings=[embedding]
                     )
@@ -146,7 +146,7 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
                 
                 collection.add(
                     documents=[chunk],
-                    metadatas=[metadata.model_dump()],
+                    metadatas=[metadata.model_dump(mode='json', exclude_none=True)],
                     ids=[f"{filename}_{i}_md"],
                     embeddings=[embedding]
                 )
@@ -169,7 +169,7 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
             
             collection.add(
                 documents=[description],
-                metadatas=[metadata.model_dump()],
+                metadatas=[metadata.model_dump(mode='json', exclude_none=True)],
                 ids=[f"{filename}_image"],
                 embeddings=[embedding]
             )

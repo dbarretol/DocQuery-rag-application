@@ -4,7 +4,7 @@ import logging
 import sys
 import shutil
 import datetime
-from fastapi import FastAPI, UploadFile, File, BackgroundTasks, Form
+from fastapi import FastAPI, UploadFile, File, BackgroundTasks, Form, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
@@ -194,7 +194,7 @@ async def get_passage(passage_id: str):
     result = collection.get(ids=[passage_id])
     
     if not result["documents"]:
-        return {"error": "Passage not found"}
+        raise HTTPException(status_code=404, detail="Passage not found")
         
     content = result["documents"][0]
     metadata = result["metadatas"][0]
