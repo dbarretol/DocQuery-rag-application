@@ -1,4 +1,3 @@
-import pytest
 import os
 from unittest.mock import MagicMock, patch
 from app.backend.storage.gcs import download_index, upload_index

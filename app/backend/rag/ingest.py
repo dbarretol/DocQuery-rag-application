@@ -6,7 +6,7 @@ import io
 from PIL import Image as PILImage
 from app.backend.storage.chroma import get_chroma_client
 from app.backend.storage.gcs import upload_index
-from app.backend.config_loader import get_generation_model, get_embedding_model, get_prompt
+from app.backend.config_loader import get_generation_model, get_embedding_model, get_prompt, settings
 from app.backend.rag.utils import get_client
 from app.backend.rag.retry_config import retry_on_api_errors
 
@@ -94,7 +94,8 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
                     logger.info(f"Processing image {img_index + 1}/{len(image_list)} on page {page_num + 1}")
                     xref = img[0]
                     pix = fitz.Pixmap(doc, xref)
-                    if pix.colorspace and pix.colorspace.n > 3: pix = fitz.Pixmap(fitz.csRGB, pix)
+                    if pix.colorspace and pix.colorspace.n > 3:
+                        pix = fitz.Pixmap(fitz.csRGB, pix)
                     description = await describe_image(pix.tobytes("png"), generation_model)
                     logger.debug("Image described.")
 
@@ -147,7 +148,7 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
 
         set_status(filename, "INDEXED")
         logger.info(f"--- INGESTION SUCCESSFUL: {filename} ---")
-        upload_index(os.getenv("CHROMA_PATH", "./data/chroma"))
+        upload_index(settings.CHROMA_PATH)
         return "INDEXED"
 
     except Exception as e:

@@ -2,11 +2,12 @@ import os
 import logging
 import zipfile
 from google.cloud import storage
+from app.backend.config_loader import settings
 
 logger = logging.getLogger("uvicorn")
 
 def get_gcs_bucket():
-    return os.getenv("GCS_BUCKET")
+    return settings.GCS_BUCKET
 
 def zip_directory(directory_path, zip_path):
     with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:

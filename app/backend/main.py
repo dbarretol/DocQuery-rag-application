@@ -17,7 +17,7 @@ from app.backend.rag.retrieval import retrieve_context
 from app.backend.rag.generation import generate_answer, generate_suggestions
 from app.backend.storage.gcs import download_index
 from app.backend.storage.chroma import get_chroma_client
-from app.backend.config_loader import config
+from app.backend.config_loader import config, settings
 
 load_dotenv()
 
@@ -64,7 +64,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @app.on_event("startup")
 async def startup_event():
-    download_index(os.getenv("CHROMA_PATH", "./data/chroma"))
+    download_index(settings.CHROMA_PATH)
 
 @app.get("/health")
 async def health():
