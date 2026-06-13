@@ -186,5 +186,25 @@ async def chat_suggestions(data: dict):
     
     return {"suggestions": suggestions}
 
+@app.get("/passage/{passage_id}")
+async def get_passage(passage_id: str):
+    logger.info(f"Retrieving passage: {passage_id}")
+    chroma_client = get_chroma_client()
+    collection = chroma_client.get_or_create_collection(name="documents")
+    
+    result = collection.get(ids=[passage_id])
+    
+    if not result["documents"]:
+        return {"error": "Passage not found"}
+        
+    content = result["documents"][0]
+    metadata = result["metadatas"][0]
+    
+    return {
+        "content": content,
+        "metadata": metadata,
+        "type": metadata.get("content_type", "text")
+    }
+
 # Instrumentator at the end
 Instrumentator().instrument(app).expose(app)

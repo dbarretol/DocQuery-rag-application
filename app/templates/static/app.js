@@ -20,6 +20,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentEmbModel = document.getElementById('currentEmbModel');
     const currentLanguage = document.getElementById('currentLanguage');
 
+    /* ── Passage Modal ── */
+    const modalPassage = document.getElementById('modalPassage');
+    const btnClosePassage = document.getElementById('btnClosePassage');
+    const passageContent = document.getElementById('passageContent');
+    const passageMeta = document.getElementById('passageMeta');
+
+    btnClosePassage.addEventListener('click', () => modalPassage.classList.remove('active'));
+    modalPassage.addEventListener('click', (e) => { if (e.target === modalPassage) modalPassage.classList.remove('active'); });
+
     btnOpenSettings.addEventListener('click', () => modalSettings.classList.add('active'));
     btnCloseSettings.addEventListener('click', () => modalSettings.classList.remove('active'));
     modalSettings.addEventListener('click', (e) => { if (e.target === modalSettings) modalSettings.classList.remove('active'); });
@@ -406,7 +415,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Show cancel state (square/stop icon)
         btnSend.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-  <!-- Relleno negro y rotación -->
   <rect x="6" y="6" width="12" height="12" fill="currentColor" transform="rotate(-45 12 12)" />
 </svg>`;
 
@@ -429,34 +437,91 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
             typingEl.remove();
 
-            // Render markdown
+            // Render markdown with citation links
             const botMessage = document.createElement('div');
             botMessage.className = 'message bot';
+            
+            let answerHtml = marked.parse(data.answer || 'Sin respuesta.');
+            
+            // Process [n] citations in the text
+            answerHtml = answerHtml.replace(/\[(\d+)\]/g, (match, n) => {
+                const idx = parseInt(n) - 1;
+                if (data.sources && data.sources[idx]) {
+                    return `<a class="citation-link" onclick="openPassageModal('${data.sources[idx].id}')">${n}</a>`;
+                }
+                return match;
+            });
+
             botMessage.innerHTML = `
                 <div class="message-avatar">AI</div>
-                <div class="message-bubble">${marked.parse(data.answer || 'Sin respuesta.')}</div>
+                <div class="message-bubble">
+                    <div class="message-content">${answerHtml}</div>
+                    ${renderSources(data.sources)}
+                </div>
             `;
             chatMessages.appendChild(botMessage);
             chatMessages.scrollTop = chatMessages.scrollHeight;
 
             // Fetch and show dynamic suggestions
             fetchDynamicSuggestions(question, data.answer);
-            } catch (err) {
+        } catch (err) {
             typingEl.remove();
             if (err.name === 'AbortError') {
                 appendMessage('bot', 'Consulta cancelada.');
             } else {
                 appendMessage('bot', 'Error de conexión. Intenta de nuevo.');
             }
-            }
+        }
 
-            // Reset button
-            abortController = null;
-            btnSend.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                        </svg>`;
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+        // Reset button
+        abortController = null;
+        btnSend.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>`;
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function renderSources(sources) {
+        if (!sources || sources.length === 0) return '';
+        
+        const sourceChips = sources.map((s, i) => `
+            <button class="source-chip" onclick="openPassageModal('${s.id}')">
+                [${i + 1}] ${escHtml(s.filename)}${s.page !== 'Unknown' ? ' (pág. ' + s.page + ')' : ''}
+            </button>
+        `).join('');
+        
+        return `<div class="source-list">${sourceChips}</div>`;
+    }
+
+    window.openPassageModal = async function(passageId) {
+        passageMeta.textContent = 'Cargando...';
+        passageContent.innerHTML = '<div style="text-align:center; padding: 20px;">Cargando contenido del pasaje...</div>';
+        modalPassage.classList.add('active');
+        
+        try {
+            const res = await fetch(`/passage/${passageId}`);
+            const data = await res.json();
+            
+            if (data.error) {
+                passageMeta.textContent = 'Error';
+                passageContent.textContent = data.error;
+                return;
             }
+            
+            passageMeta.textContent = `${data.metadata.filename}${data.metadata.page !== 'Unknown' ? ' · Página ' + data.metadata.page : ''}`;
+            
+            if (data.type === 'image') {
+                // Image descriptions are stored as text, but we might want to show them specially
+                passageContent.innerHTML = `<div style="margin-bottom: 12px; font-weight: 600; color: var(--indigo);">Descripción de Imagen:</div>` + marked.parse(data.content);
+            } else {
+                passageContent.innerHTML = marked.parse(data.content);
+            }
+        } catch (e) {
+            console.error('Error opening passage:', e);
+            passageMeta.textContent = 'Error';
+            passageContent.textContent = 'No se pudo cargar el pasaje.';
+        }
+    };
 
             async function fetchDynamicSuggestions(question, answer) {
             const suggestionsContainer = document.getElementById('suggestions');

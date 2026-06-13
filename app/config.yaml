@@ -48,7 +48,8 @@ prompts:
     Guidelines:
     - Identify and extract relevant information from the context.
     - Answer the question concisely but completely using that information.
-    - Cite all supporting source identifiers for every factual statement.
+    - Cite all supporting sources for every factual statement using numerical references like [1], [2], [1, 3], etc.
+    - Use the source number corresponding to the order of sources provided in the context.
     - If multiple sources support the answer, cite them all.
     - If the context does not contain enough information, explicitly respond:
       "The provided context does not contain enough information to answer this question."
