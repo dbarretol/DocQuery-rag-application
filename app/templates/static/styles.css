@@ -493,6 +493,11 @@ html, body {
 }
 
 /* ── Chat input area ── */
+.suggestions-area {
+    padding: 16px 24px 0;
+    background: var(--surface);
+}
+
 .chat-footer {
     padding: 16px 24px;
     background: var(--uni-yellow);
@@ -503,14 +508,13 @@ html, body {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
-    margin-bottom: 10px;
 }
 
 .suggestion-chip {
     height: 28px;
     padding: 0 12px;
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: 1px solid var(--uni-red);
     border-radius: 99px;
     font-size: 12px;
     font-family: inherit;
@@ -520,9 +524,9 @@ html, body {
 }
 
 .suggestion-chip:hover {
-    border-color: var(--indigo);
-    color: var(--indigo);
-    background: var(--indigo-dim);
+    border-color: var(--uni-red);
+    color: var(--uni-red);
+    background: var(--uni-red-dim);
 }
 
 .chat-input-row {
