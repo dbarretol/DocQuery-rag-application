@@ -9,6 +9,7 @@ from app.backend.storage.gcs import upload_index
 from app.backend.config_loader import get_generation_model, get_embedding_model, get_prompt, settings
 from app.backend.rag.utils import get_client
 from app.backend.rag.retry_config import retry_on_api_errors
+from app.backend.rag.models import ChunkMetadata, IngestionStatus
 
 logger = logging.getLogger("uvicorn")
 
@@ -32,13 +33,13 @@ async def describe_image(image_bytes: bytes, model_name: str = None) -> str:
     response = _generate()
     return response.text
 
-def set_status(filename: str, status: str):
+def set_status(filename: str, status: IngestionStatus):
     status_path = os.path.join("data/uploads", f"{filename}.status")
     with open(status_path, "w", encoding="utf-8") as f:
-        f.write(status)
+        f.write(status.value)
 
 async def ingest_document(file_path: str, filename: str, generation_model: str = None, embedding_model: str = None):
-    set_status(filename, "PROCESSING")
+    set_status(filename, IngestionStatus.PROCESSING)
     logger.info(f"--- STARTING INGESTION: {filename} ---")
     logger.info(f"Models configured [gen: {generation_model}, emb: {embedding_model}]")
 
@@ -48,9 +49,9 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
 
     # Validation for text-only model
     if embedding_model_name == "gemini-embedding-001" and ext not in [".md", ".txt", ".csv"]:
-        error_msg = "ERROR: Unsupported file type for text-only model"
-        set_status(filename, error_msg)
-        logger.warning(f"REJECTED: File {filename} for model {embedding_model_name}. Reason: Unsupported type.")
+        error_msg = "Unsupported file type for text-only model"
+        set_status(filename, IngestionStatus.ERROR)
+        logger.warning(f"REJECTED: File {filename} for model {embedding_model_name}. Reason: {error_msg}.")
         return "ERROR"
 
     client = get_client()
@@ -80,9 +81,17 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
                     logger.debug(f"Embedding text chunk {i+1}...")
                     response = _embed(chunk)
                     embedding = response.embeddings[0].values
+                    
+                    metadata = ChunkMetadata(
+                        filename=filename,
+                        page=page_num + 1,
+                        chunk_index=i,
+                        content_type="text"
+                    )
+                    
                     collection.add(
                         documents=[chunk],
-                        metadatas=[{"filename": filename, "page": page_num + 1, "chunk_index": i, "content_type": "text", "status": "INDEXED"}],
+                        metadatas=[metadata.model_dump()],
                         ids=[f"{filename}_{page_num}_{i}_text"],
                         embeddings=[embedding]
                     )
@@ -101,9 +110,17 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
 
                     response = _embed(description)
                     embedding = response.embeddings[0].values
+                    
+                    metadata = ChunkMetadata(
+                        filename=filename,
+                        page=page_num + 1,
+                        img_index=img_index,
+                        content_type="image"
+                    )
+                    
                     collection.add(
                         documents=[description],
-                        metadatas=[{"filename": filename, "page": page_num + 1, "img_index": img_index, "content_type": "image", "status": "INDEXED"}],
+                        metadatas=[metadata.model_dump()],
                         ids=[f"{filename}_{page_num}_{img_index}_image"],
                         embeddings=[embedding]
                     )
@@ -118,9 +135,17 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
             for i, chunk in enumerate(chunks):
                 response = _embed(chunk)
                 embedding = response.embeddings[0].values
+                
+                metadata = ChunkMetadata(
+                    filename=filename,
+                    page=1,
+                    chunk_index=i,
+                    content_type="markdown"
+                )
+                
                 collection.add(
                     documents=[chunk],
-                    metadatas=[{"filename": filename, "page": 1, "chunk_index": i, "content_type": "markdown", "status": "INDEXED"}],
+                    metadatas=[metadata.model_dump()],
                     ids=[f"{filename}_{i}_md"],
                     embeddings=[embedding]
                 )
@@ -134,26 +159,32 @@ async def ingest_document(file_path: str, filename: str, generation_model: str =
 
             response = _embed(description)
             embedding = response.embeddings[0].values
+            
+            metadata = ChunkMetadata(
+                filename=filename,
+                page=1,
+                content_type="image"
+            )
+            
             collection.add(
                 documents=[description],
-                metadatas=[{"filename": filename, "page": 1, "content_type": "image", "status": "INDEXED"}],
+                metadatas=[metadata.model_dump()],
                 ids=[f"{filename}_image"],
                 embeddings=[embedding]
             )
             logger.info("Image processing completed.")
         else:
-            set_status(filename, "ERROR: Unsupported file type")
+            set_status(filename, IngestionStatus.ERROR)
             logger.warning(f"UNSUPPORTED: File {filename} has extension {ext}")
             return "ERROR"
 
-        set_status(filename, "INDEXED")
+        set_status(filename, IngestionStatus.INDEXED)
         logger.info(f"--- INGESTION SUCCESSFUL: {filename} ---")
         upload_index(settings.CHROMA_PATH)
         return "INDEXED"
 
     except Exception as e:
-        error_msg = f"ERROR: {str(e)}"
-        set_status(filename, error_msg)
+        set_status(filename, IngestionStatus.ERROR)
         logger.error(f"--- INGESTION FAILED: {filename} ---")
         logger.exception(f"Details: {e}")
         return "ERROR"
