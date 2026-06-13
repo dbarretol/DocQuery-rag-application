@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     /* ── State ── */
+    // docs is keyed by filename to avoid duplicates across sessions
     const docs = [];
     let config = {
         generation_model: localStorage.getItem('gen_model') || '',
@@ -19,6 +20,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentGenModel = document.getElementById('currentGenModel');
     const currentEmbModel = document.getElementById('currentEmbModel');
     const currentLanguage = document.getElementById('currentLanguage');
+
+    /* ── Passage Modal ── */
+    const modalPassage = document.getElementById('modalPassage');
+    const btnClosePassage = document.getElementById('btnClosePassage');
+    const passageContent = document.getElementById('passageContent');
+    const passageMeta = document.getElementById('passageMeta');
+
+    btnClosePassage.addEventListener('click', () => modalPassage.classList.remove('active'));
+    modalPassage.addEventListener('click', (e) => { if (e.target === modalPassage) modalPassage.classList.remove('active'); });
 
     btnOpenSettings.addEventListener('click', () => modalSettings.classList.add('active'));
     btnCloseSettings.addEventListener('click', () => modalSettings.classList.remove('active'));
@@ -108,6 +118,51 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     loadSettings();
+    loadSidebarDocs(); // Hydrate sidebar from persistent ChromaDB on startup
+
+    /* ── Sidebar Persistence: bidirectional sync with ChromaDB ── */
+    async function loadSidebarDocs() {
+        console.log('[loadSidebarDocs] START — docs array before fetch:', docs.map(d => d.name));
+        try {
+            const res = await fetch('/knowledge-base');
+            if (!res.ok) {
+                console.error('[loadSidebarDocs] /knowledge-base returned', res.status);
+                return;
+            }
+            const data = await res.json();
+            const kbNames = new Set(data.documents.map(d => d.filename));
+            console.log('[loadSidebarDocs] KB returned:', [...kbNames]);
+            console.log('[loadSidebarDocs] docs array at resolution time:', docs.map(d => d.name));
+
+            // ── STEP 1: Remove 'ready' docs that are no longer in ChromaDB ──
+            // Iterate backwards so splices don't shift unvisited indices.
+            for (let i = docs.length - 1; i >= 0; i--) {
+                if (docs[i].status === 'ready' && !kbNames.has(docs[i].name)) {
+                    console.log('[loadSidebarDocs] Removing stale entry from sidebar:', docs[i].name);
+                    docs.splice(i, 1);
+                }
+            }
+
+            // ── STEP 2: Add KB docs not yet in the local array ──
+            const existingNames = new Set(docs.map(d => d.name));
+            data.documents.forEach(doc => {
+                if (!existingNames.has(doc.filename)) {
+                    console.log('[loadSidebarDocs] Adding new entry to sidebar:', doc.filename);
+                    docs.push({
+                        id: doc.filename,
+                        name: doc.filename,
+                        status: 'ready',
+                        size: null
+                    });
+                }
+            });
+
+            console.log('[loadSidebarDocs] END — docs array after sync:', docs.map(d => d.name));
+            renderDocList();
+        } catch (e) {
+            console.error('[loadSidebarDocs] Error:', e);
+        }
+    }
 
     /* ── Knowledge Base Management ── */
     const btnOpenKB = document.getElementById('btnOpenKB');
@@ -247,7 +302,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (data.status === 'INDEXED') {
                     clearInterval(interval);
-                    updateDocStatus(docId, 'ready');
+                    // Remove the temporary in-session entry and reload from KB
+                    // to ensure filename-based deduplication and correct stable IDs
+                    const idx = docs.findIndex(d => d.id === docId);
+                    if (idx !== -1) docs.splice(idx, 1);
+                    await loadSidebarDocs();
                     setUploadStatus('Documento indexado.', 'success');
                 } else if (data.status.startsWith('ERROR')) {
                     clearInterval(interval);
@@ -280,12 +339,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderDocList() {
         const list = document.getElementById('docList');
         const empty = document.getElementById('emptyState');
+
+        // Always remove stale DOM items FIRST — before any early return.
+        // Without this, the last item's element persists as a ghost when docs empties.
+        list.querySelectorAll('.doc-item').forEach(n => n.remove());
+
         if (!docs.length) { empty.style.display = ''; return; }
         empty.style.display = 'none';
 
-        // Keep empty state node, re-render items
-        list.querySelectorAll('.doc-item').forEach(n => n.remove());
-
+        // Re-render from current docs array
         docs.forEach(doc => {
             const statusLabel = { ready: 'Listo', processing: 'Procesando…', error: 'Error' }[doc.status];
             const sizeLabel = doc.size ? formatBytes(doc.size) : '';
@@ -304,7 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="doc-item-meta">${statusLabel}${sizeLabel ? ' · ' + sizeLabel : ''}</div>
                 </div>
                 <span class="status-dot ${doc.status}"></span>
-                <button class="btn-delete" title="Eliminar" onclick="removeDoc(${doc.id})">
+                <button class="btn-delete" title="Eliminar" onclick="removeDoc('${String(doc.id).replace(/'/g, "\\'")}')">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -315,42 +377,37 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     window.removeDoc = async function (id) {
-        const idx = docs.findIndex(d => d.id === id);
-        if (idx === -1) {
-            console.warn('Doc not found in local array:', id);
+        const docEntry = docs.find(d => String(d.id) === String(id));
+        if (!docEntry) {
+            console.warn('[removeDoc] Doc not found in local array for id:', id,
+                         '| Current docs:', docs.map(d => d.name));
             return;
         }
 
-        const doc = docs[idx];
-        console.log('Attempting to delete:', doc.name, 'with id:', id);
+        const docName = docEntry.name;
+        console.log('[removeDoc] Starting delete for:', docName,
+                    '| docs before splice:', docs.map(d => d.name));
 
         try {
-            const res = await fetch(`/documents/${encodeURIComponent(doc.name)}`, { method: 'DELETE' });
+            const res = await fetch(`/documents/${encodeURIComponent(docName)}`, { method: 'DELETE' });
             if (res.ok) {
-                console.log('Doc deleted on server, removing from DOM');
+                // Re-find index AFTER the await — concurrent deletes may have shifted positions.
+                const currentIdx = docs.findIndex(d => d.name === docName);
+                console.log('[removeDoc] DELETE 200 OK for:', docName,
+                            '| re-found idx:', currentIdx,
+                            '| docs at resolution:', docs.map(d => d.name));
+                if (currentIdx !== -1) docs.splice(currentIdx, 1);
+                console.log('[removeDoc] docs after splice:', docs.map(d => d.name));
 
-                // Remove from local array
-                docs.splice(idx, 1);
-
-                // Direct DOM manipulation
-                const docItem = document.querySelector(`.doc-item[data-id="${id}"]`);
-                if (docItem) {
-                    docItem.remove();
-                    console.log('DOM element removed');
-                } else {
-                    console.error('DOM element not found for id:', id);
-                }
-
-                // Re-check empty state
-                if (docs.length === 0) {
-                    document.getElementById('emptyState').style.display = '';
-                }
+                // Full bidirectional sync — handles any race where KB was already
+                // updated or still has the doc in-flight.
+                await loadSidebarDocs();
             } else {
-                console.error('Server failed to delete:', res.statusText);
+                console.error('[removeDoc] Server DELETE failed:', res.status, res.statusText);
                 alert('Error al eliminar el documento en servidor');
             }
         } catch (e) {
-            console.error('Delete error:', e);
+            console.error('[removeDoc] Network error:', e);
             alert('Error de conexión al eliminar');
         }
     };
@@ -406,7 +463,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Show cancel state (square/stop icon)
         btnSend.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-  <!-- Relleno negro y rotación -->
   <rect x="6" y="6" width="12" height="12" fill="currentColor" transform="rotate(-45 12 12)" />
 </svg>`;
 
@@ -429,15 +485,71 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
             typingEl.remove();
 
-            // Render markdown
+            // Render markdown with sequential citation re-mapping
             const botMessage = document.createElement('div');
             botMessage.className = 'message bot';
+            
+            let originalAnswer = data.answer || 'Sin respuesta.';
+            
+            // 1. Identify used original indices
+            const citedOriginalIndices = new Set();
+            const citationRegex = /\[([\d,\s]+)\]/g;
+            let match;
+            while ((match = citationRegex.exec(originalAnswer)) !== null) {
+                match[1].split(',').forEach(n => {
+                    const idx = parseInt(n.trim()) - 1;
+                    if (data.sources && data.sources[idx]) {
+                        citedOriginalIndices.add(idx);
+                    }
+                });
+            }
+
+            // 2. Create sequential mapping
+            const sortedOriginalIndices = Array.from(citedOriginalIndices).sort((a, b) => a - b);
+            const indexMap = {}; // originalIdx -> sequentialIndex (1-based)
+            const mappedSources = sortedOriginalIndices.map((origIdx, i) => {
+                indexMap[origIdx] = i + 1;
+                return data.sources[origIdx];
+            });
+
+            // 3. Replace in the answer text using the new mapping
+            let processedAnswer = originalAnswer.replace(/\[([\d,\s]+)\]/g, (match, group) => {
+                const numbers = group.split(',').map(n => n.trim());
+                const mappedNumbers = numbers.map(n => {
+                    const origIdx = parseInt(n) - 1;
+                    return indexMap[origIdx] || n;
+                });
+                return `[${mappedNumbers.join(', ')}]`;
+            });
+
+            let answerHtml = marked.parse(processedAnswer);
+            
+            // 4. Convert citations to interactive links
+            answerHtml = answerHtml.replace(/\[([\d,\s]+)\]/g, (match, group) => {
+                const numbers = group.split(',').map(n => n.trim());
+                const links = numbers.map(n => {
+                    const seqIdx = parseInt(n);
+                    const source = mappedSources[seqIdx - 1];
+                    if (source) {
+                        return `<a class="citation-link" onclick="openPassageModal('${source.id}')">${n}</a>`;
+                    }
+                    return n;
+                });
+                return `[${links.join(', ')}]`;
+            });
+
             botMessage.innerHTML = `
                 <div class="message-avatar">AI</div>
-                <div class="message-bubble">${marked.parse(data.answer || 'Sin respuesta.')}</div>
+                <div class="message-bubble">
+                    <div class="message-content">${answerHtml}</div>
+                    ${renderSources(mappedSources)}
+                </div>
             `;
             chatMessages.appendChild(botMessage);
             chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            // Fetch and show dynamic suggestions
+            fetchDynamicSuggestions(question, data.answer);
         } catch (err) {
             typingEl.remove();
             if (err.name === 'AbortError') {
@@ -450,11 +562,79 @@ document.addEventListener('DOMContentLoaded', () => {
         // Reset button
         abortController = null;
         btnSend.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                        </svg>`;
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>`;
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
+    function renderSources(mappedSources) {
+        if (!mappedSources || mappedSources.length === 0) return '';
+        
+        const sourceChips = mappedSources.map((s, i) => `
+            <button class="source-chip" onclick="openPassageModal('${s.id}')">
+                [${i + 1}] ${escHtml(s.filename)}${s.page !== 'Unknown' ? ' (pág. ' + s.page + ')' : ''}
+            </button>
+        `).join('');
+        
+        return `<div class="source-list">${sourceChips}</div>`;
+    }
+
+    window.openPassageModal = async function(passageId) {
+        passageMeta.textContent = 'Cargando...';
+        passageContent.innerHTML = '<div style="text-align:center; padding: 20px;">Cargando contenido del pasaje...</div>';
+        modalPassage.classList.add('active');
+        
+        try {
+            const res = await fetch(`/passage/${passageId}`);
+            const data = await res.json();
+            
+            if (data.error) {
+                passageMeta.textContent = 'Error';
+                passageContent.textContent = data.error;
+                return;
+            }
+            
+            passageMeta.textContent = `${data.metadata.filename}${data.metadata.page !== 'Unknown' ? ' · Página ' + data.metadata.page : ''}`;
+            
+            if (data.type === 'image') {
+                // Image descriptions are stored as text, but we might want to show them specially
+                passageContent.innerHTML = `<div style="margin-bottom: 12px; font-weight: 600; color: var(--indigo);">Descripción de Imagen:</div>` + marked.parse(data.content);
+            } else {
+                passageContent.innerHTML = marked.parse(data.content);
+            }
+        } catch (e) {
+            console.error('Error opening passage:', e);
+            passageMeta.textContent = 'Error';
+            passageContent.textContent = 'No se pudo cargar el pasaje.';
+        }
+    };
+
+    async function fetchDynamicSuggestions(question, answer) {
+        const suggestionsContainer = document.getElementById('suggestions');
+        suggestionsContainer.style.display = 'none'; // Temporarily hide while loading
+
+        try {
+            const res = await fetch('/chat/suggestions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    question,
+                    answer,
+                    language: config.language
+                })
+            });
+            const data = await res.json();
+
+            if (data.suggestions && data.suggestions.length > 0) {
+                suggestionsContainer.innerHTML = data.suggestions.map(s => 
+                    `<button class="suggestion-chip" onclick="setQuery('${s.replace(/'/g, "\\'")}')">${s}</button>`
+                ).join('');
+                suggestionsContainer.style.display = 'flex';
+            }
+        } catch (err) {
+            console.error('Error fetching suggestions:', err);
+        }
+    }
     function appendMessage(role, text) {
         const isUser = role === 'user';
         const msg = document.createElement('div');

@@ -72,12 +72,16 @@
                 </div>
             </div>
 
-            <div class="chat-footer">
+            <div class="suggestions-area">
                 <div class="suggestions" id="suggestions">
-                    <button class="suggestion-chip" onclick="setQuery('¿Cuál es el ingreso neto?')">¿Cuál es el ingreso neto?</button>
-                    <button class="suggestion-chip" onclick="setQuery('Resume el documento')">Resume el documento</button>
-                    <button class="suggestion-chip" onclick="setQuery('¿Cuáles son las conclusiones principales?')">Conclusiones principales</button>
+                    <button class="suggestion-chip" onclick="setQuery('Resume el documento')">📄 Resumen</button>
+                    <button class="suggestion-chip" onclick="setQuery('¿De qué trata este documento?')">🎯 Tema principal</button>
+                    <button class="suggestion-chip" onclick="setQuery('Explica los puntos más importantes')">⭐ Puntos clave</button>
+                    <button class="suggestion-chip" onclick="setQuery('Identifica fechas, nombres y cifras importantes')">🔍 Datos importantes</button>
                 </div>
+            </div>
+
+            <div class="chat-footer">
                 <div class="chat-input-row">
                     <textarea
                         class="chat-input-box"

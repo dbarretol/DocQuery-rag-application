@@ -48,7 +48,8 @@ prompts:
     Guidelines:
     - Identify and extract relevant information from the context.
     - Answer the question concisely but completely using that information.
-    - Cite all supporting source identifiers for every factual statement.
+    - Cite all supporting sources for every factual statement using numerical references like [1], [2], [1, 3], etc.
+    - Use the source number corresponding to the order of sources provided in the context.
     - If multiple sources support the answer, cite them all.
     - If the context does not contain enough information, explicitly respond:
       "The provided context does not contain enough information to answer this question."
@@ -62,3 +63,22 @@ prompts:
     {query}
 
     Answer:
+  suggestion_generation: |
+    You are an AI assistant designed to suggest relevant follow-up questions based on the previous conversation and the document context.
+
+    Your task is to provide 3 or 4 concise follow-up questions that a user might want to ask.
+
+    Guidelines:
+    - Base the questions on the provided context and the user's last question.
+    - Questions must be relevant, specific, and directly related to the information in the context.
+    - Respond in {language}.
+    - Return ONLY the questions as a JSON array of strings.
+
+    Context:
+    {context}
+
+    Last User Question:
+    {question}
+
+    Bot Response:
+    {answer}

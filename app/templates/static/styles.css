@@ -493,6 +493,11 @@ html, body {
 }
 
 /* ── Chat input area ── */
+.suggestions-area {
+    padding: 16px 24px 16px;
+    background: var(--surface);
+}
+
 .chat-footer {
     padding: 16px 24px;
     background: var(--uni-yellow);
@@ -503,14 +508,13 @@ html, body {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
-    margin-bottom: 10px;
 }
 
 .suggestion-chip {
     height: 28px;
     padding: 0 12px;
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: 1px solid var(--uni-red);
     border-radius: 99px;
     font-size: 12px;
     font-family: inherit;
@@ -520,9 +524,9 @@ html, body {
 }
 
 .suggestion-chip:hover {
-    border-color: var(--indigo);
-    color: var(--indigo);
-    background: var(--indigo-dim);
+    border-color: var(--uni-red);
+    color: var(--uni-red);
+    background: var(--uni-red-dim);
 }
 
 .chat-input-row {
@@ -749,4 +753,76 @@ html, body {
 
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* ── Citations & Passage Modal ── */
+.source-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+}
+
+.source-chip {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--indigo);
+    background: var(--indigo-dim);
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(79, 110, 247, 0.2);
+    cursor: pointer;
+    transition: all var(--transition);
+}
+
+.source-chip:hover {
+    background: var(--indigo);
+    color: #fff;
+}
+
+.passage-content-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    font-size: 14px;
+    line-height: 1.6;
+    max-height: 400px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.passage-content-box img {
+    max-width: 100%;
+    border-radius: var(--radius-sm);
+    display: block;
+    margin: 0 auto;
+}
+
+/* Style for links inside bubble */
+.citation-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--indigo-dim);
+    color: var(--indigo);
+    width: 18px;
+    height: 18px;
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 4px;
+    text-decoration: none;
+    margin: 0 2px;
+    vertical-align: middle;
+    cursor: pointer;
+    transition: all var(--transition);
+    border: 1px solid rgba(79, 110, 247, 0.2);
+}
+
+.citation-link:hover {
+    background: var(--indigo);
+    color: #fff;
 }
