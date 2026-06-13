@@ -1,24 +1,28 @@
 document.addEventListener('DOMContentLoaded', () => {
     /* ── State ── */
     const docs = [];
-    let config = { 
-        generation_model: localStorage.getItem('gen_model') || '', 
-        embedding_model: localStorage.getItem('emb_model') || '' 
+    let config = {
+        generation_model: localStorage.getItem('gen_model') || '',
+        embedding_model: localStorage.getItem('emb_model') || '',
+        language: localStorage.getItem('language') || 'Spanish'
     };
+    let abortController = null;
 
     /* ── Settings Management ── */
-    const btnOpenSettings  = document.getElementById('btnOpenSettings');
+    const btnOpenSettings = document.getElementById('btnOpenSettings');
     const btnCloseSettings = document.getElementById('btnCloseSettings');
-    const modalSettings    = document.getElementById('modalSettings');
-    const btnSaveSettings  = document.getElementById('btnSaveSettings');
-    const selectGenModel   = document.getElementById('selectGenModel');
-    const selectEmbModel   = document.getElementById('selectEmbModel');
-    const currentGenModel  = document.getElementById('currentGenModel');
-    const currentEmbModel  = document.getElementById('currentEmbModel');
+    const modalSettings = document.getElementById('modalSettings');
+    const btnSaveSettings = document.getElementById('btnSaveSettings');
+    const selectGenModel = document.getElementById('selectGenModel');
+    const selectEmbModel = document.getElementById('selectEmbModel');
+    const selectLanguage = document.getElementById('selectLanguage');
+    const currentGenModel = document.getElementById('currentGenModel');
+    const currentEmbModel = document.getElementById('currentEmbModel');
+    const currentLanguage = document.getElementById('currentLanguage');
 
     btnOpenSettings.addEventListener('click', () => modalSettings.classList.add('active'));
     btnCloseSettings.addEventListener('click', () => modalSettings.classList.remove('active'));
-    modalSettings.addEventListener('click', (e) => { if(e.target === modalSettings) modalSettings.classList.remove('active'); });
+    modalSettings.addEventListener('click', (e) => { if (e.target === modalSettings) modalSettings.classList.remove('active'); });
 
     let modelsConfig = {}; // Store config locally
 
@@ -34,24 +38,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
             modelsConfig = data.models;
             console.log('Config data received:', data);
-            
+
             // Populate select options
             if (modelsConfig && modelsConfig.generation && modelsConfig.generation.options) {
-                selectGenModel.innerHTML = modelsConfig.generation.options.map(opt => 
+                selectGenModel.innerHTML = modelsConfig.generation.options.map(opt =>
                     `<option value="${opt.name}">${opt.name} (${opt.cost})</option>`
                 ).join('');
             }
-            
+
             if (modelsConfig && modelsConfig.embeddings && modelsConfig.embeddings.options) {
-                selectEmbModel.innerHTML = modelsConfig.embeddings.options.map(opt => 
+                selectEmbModel.innerHTML = modelsConfig.embeddings.options.map(opt =>
                     `<option value="${opt.name}">${opt.name}</option>`
                 ).join('');
             }
 
             // Set defaults if not in localStorage
-            if (!config.generation_model && modelsConfig && modelsConfig.generation) 
+            if (!config.generation_model && modelsConfig && modelsConfig.generation)
                 config.generation_model = modelsConfig.generation.default;
-            if (!config.embedding_model && modelsConfig && modelsConfig.embeddings) 
+            if (!config.embedding_model && modelsConfig && modelsConfig.embeddings)
                 config.embedding_model = modelsConfig.embeddings.default;
 
             updateSettingsUI();
@@ -63,7 +67,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateSettingsUI() {
         currentGenModel.textContent = config.generation_model;
         currentEmbModel.textContent = config.embedding_model;
-        
+        currentLanguage.textContent = config.language;
+
         // Header
         const headerGenModel = document.getElementById('headerGenModel');
         const headerModelDesc = document.getElementById('headerModelDesc');
@@ -77,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Sidebar Embeddings
         const sidebarEmbModel = document.getElementById('sidebarEmbModel');
         const sidebarEmbModelDesc = document.getElementById('sidebarEmbModelDesc');
-        
+
         if (sidebarEmbModel) sidebarEmbModel.textContent = config.embedding_model;
 
         if (sidebarEmbModelDesc && modelsConfig.embeddings && modelsConfig.embeddings.options) {
@@ -88,22 +93,85 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update selects if they were changed elsewhere
         selectGenModel.value = config.generation_model;
         selectEmbModel.value = config.embedding_model;
+        selectLanguage.value = config.language;
     }
 
     btnSaveSettings.addEventListener('click', () => {
         config.generation_model = selectGenModel.value;
         config.embedding_model = selectEmbModel.value;
+        config.language = selectLanguage.value;
         localStorage.setItem('gen_model', config.generation_model);
         localStorage.setItem('emb_model', config.embedding_model);
+        localStorage.setItem('language', config.language);
         updateSettingsUI();
         modalSettings.classList.remove('active');
     });
 
     loadSettings();
 
-    /* ── Upload ── */
-    const fileInput  = document.getElementById('fileInput');
-    const btnUpload  = document.getElementById('btnUpload');
+    /* ── Knowledge Base Management ── */
+    const btnOpenKB = document.getElementById('btnOpenKB');
+    const btnCloseKB = document.getElementById('btnCloseKB');
+    const modalKB = document.getElementById('modalKB');
+    const kbList = document.getElementById('kbList');
+
+    btnOpenKB.addEventListener('click', async () => {
+        modalKB.classList.add('active');
+        await loadKnowledgeBase();
+    });
+    btnCloseKB.addEventListener('click', () => modalKB.classList.remove('active'));
+    modalKB.addEventListener('click', (e) => { if(e.target === modalKB) modalKB.classList.remove('active'); });
+
+    async function loadKnowledgeBase() {
+        kbList.innerHTML = '<div style="padding: 20px; text-align: center;">Cargando...</div>';
+        try {
+            const res = await fetch('/knowledge-base');
+            const data = await res.json();
+            
+            if (data.documents.length === 0) {
+                kbList.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-lo);">No hay documentos en la base de conocimientos.</div>';
+                return;
+            }
+            
+            kbList.innerHTML = data.documents.map(doc => `
+                <div class="doc-item">
+                    <div class="doc-item-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                    </div>
+                    <div class="doc-item-info">
+                        <div class="doc-item-name">${escHtml(doc.filename)}</div>
+                    </div>
+                    <button class="btn-delete" title="Eliminar" onclick="deleteDocFromKB('${encodeURIComponent(doc.filename)}')">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </button>
+                </div>
+            `).join('');
+        } catch (e) {
+            console.error('Error loading KB:', e);
+            kbList.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--danger);">Error al cargar.</div>';
+        }
+    }
+
+    window.deleteDocFromKB = async function(filename) {
+        if (!confirm(`¿Estás seguro de eliminar ${decodeURIComponent(filename)}?`)) return;
+        
+        try {
+            const res = await fetch(`/documents/${filename}`, { method: 'DELETE' });
+            if (res.ok) {
+                await loadKnowledgeBase();
+            } else {
+                alert('Error al eliminar.');
+            }
+        } catch (e) {
+            console.error('Delete error:', e);
+        }
+    };
+    const fileInput = document.getElementById('fileInput');
+    const btnUpload = document.getElementById('btnUpload');
     const uploadZone = document.getElementById('uploadZone');
     const uploadStatus = document.getElementById('uploadStatus');
 
@@ -144,10 +212,10 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('file', file);
         if (config.generation_model) formData.append('generation_model', config.generation_model);
         if (config.embedding_model) formData.append('embedding_model', config.embedding_model);
-        
-        console.log('Sending upload with:', { 
-            gen: config.generation_model, 
-            emb: config.embedding_model 
+
+        console.log('Sending upload with:', {
+            gen: config.generation_model,
+            emb: config.embedding_model
         });
 
         try {
@@ -176,7 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const res = await fetch(`/document-status/${encodeURIComponent(filename)}`);
                 const data = await res.json();
-                
+
                 if (data.status === 'INDEXED') {
                     clearInterval(interval);
                     updateDocStatus(docId, 'ready');
@@ -210,8 +278,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderDocList() {
-        const list   = document.getElementById('docList');
-        const empty  = document.getElementById('emptyState');
+        const list = document.getElementById('docList');
+        const empty = document.getElementById('emptyState');
         if (!docs.length) { empty.style.display = ''; return; }
         empty.style.display = 'none';
 
@@ -220,7 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         docs.forEach(doc => {
             const statusLabel = { ready: 'Listo', processing: 'Procesando…', error: 'Error' }[doc.status];
-            const sizeLabel   = doc.size ? formatBytes(doc.size) : '';
+            const sizeLabel = doc.size ? formatBytes(doc.size) : '';
 
             const item = document.createElement('div');
             item.className = 'doc-item';
@@ -246,7 +314,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    window.removeDoc = async function(id) {
+    window.removeDoc = async function (id) {
         const idx = docs.findIndex(d => d.id === id);
         if (idx === -1) {
             console.warn('Doc not found in local array:', id);
@@ -296,9 +364,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* ── Chat ── */
     const chatMessages = document.getElementById('chatMessages');
-    const chatEmpty    = document.getElementById('chatEmpty');
-    const chatInput    = document.getElementById('chatInput');
-    const btnSend      = document.getElementById('btnSend');
+    const chatEmpty = document.getElementById('chatEmpty');
+    const chatInput = document.getElementById('chatInput');
+    const btnSend = document.getElementById('btnSend');
 
     // Auto-grow textarea
     chatInput.addEventListener('input', () => {
@@ -314,6 +382,15 @@ document.addEventListener('DOMContentLoaded', () => {
     btnSend.addEventListener('click', sendMessage);
 
     async function sendMessage() {
+        if (abortController) {
+            abortController.abort();
+            abortController = null;
+            btnSend.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                        </svg>`;
+            return;
+        }
+
         const question = chatInput.value.trim();
         if (!question) return;
 
@@ -326,7 +403,14 @@ document.addEventListener('DOMContentLoaded', () => {
         appendMessage('user', question);
         chatInput.value = '';
         chatInput.style.height = 'auto';
-        btnSend.disabled = true;
+
+        // Show cancel state (square/stop icon)
+        btnSend.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <!-- Relleno negro y rotación -->
+  <rect x="6" y="6" width="12" height="12" fill="currentColor" transform="rotate(-45 12 12)" />
+</svg>`;
+
+        abortController = new AbortController();
 
         // Typing indicator
         const typingEl = appendTyping();
@@ -335,14 +419,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch('/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    question, 
-                    generation_model: config.generation_model 
-                })
+                body: JSON.stringify({
+                    question,
+                    generation_model: config.generation_model,
+                    language: config.language
+                }),
+                signal: abortController.signal
             });
             const data = await res.json();
             typingEl.remove();
-            
+
             // Render markdown
             const botMessage = document.createElement('div');
             botMessage.className = 'message bot';
@@ -352,12 +438,20 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             chatMessages.appendChild(botMessage);
             chatMessages.scrollTop = chatMessages.scrollHeight;
-        } catch {
+        } catch (err) {
             typingEl.remove();
-            appendMessage('bot', 'Error de conexión. Intenta de nuevo.');
+            if (err.name === 'AbortError') {
+                appendMessage('bot', 'Consulta cancelada.');
+            } else {
+                appendMessage('bot', 'Error de conexión. Intenta de nuevo.');
+            }
         }
 
-        btnSend.disabled = false;
+        // Reset button
+        abortController = null;
+        btnSend.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                        </svg>`;
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
@@ -390,13 +484,13 @@ document.addEventListener('DOMContentLoaded', () => {
         return msg;
     }
 
-    window.setQuery = function(q) {
+    window.setQuery = function (q) {
         chatInput.value = q;
         chatInput.focus();
         chatInput.dispatchEvent(new Event('input'));
     };
 
     function escHtml(str) {
-        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 });

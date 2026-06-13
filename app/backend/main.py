@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 import logging
 import sys
 import shutil
+import datetime
 from fastapi import FastAPI, UploadFile, File, BackgroundTasks, Form
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -19,15 +20,29 @@ from app.backend.storage.chroma import get_chroma_client
 from app.backend.config_loader import config
 
 load_dotenv()
-# Setup JSON Logging for Cloud Run compatibility
+
+# Setup Logging
+os.makedirs("logs", exist_ok=True)
+timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+log_filename = f"logs/app_{timestamp}.log"
+
 logger = logging.getLogger("uvicorn")
-handler = logging.StreamHandler(sys.stdout)
-formatter = json.JsonFormatter(
-    '%(asctime)s %(name)s %(levelname)s %(message)s'
-)
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+# Remove existing handlers to avoid duplicates
+for handler in logger.handlers[:]:
+    logger.removeHandler(handler)
+
+# File Handler
+file_handler = logging.FileHandler(log_filename)
+file_handler.setFormatter(logging.Formatter('%(asctime)s %(name)s %(levelname)s %(message)s'))
+logger.addHandler(file_handler)
+
+# Console Handler for Cloud Run compatibility
+console_handler = logging.StreamHandler(sys.stdout)
+console_handler.setFormatter(json.JsonFormatter('%(asctime)s %(name)s %(levelname)s %(message)s'))
+logger.addHandler(console_handler)
+
 logger.setLevel(logging.INFO)
+logger.info(f"Logging initialized. Log file: {log_filename}")
 
 app = FastAPI(title="Multimodal RAG Platform")
 
@@ -91,6 +106,26 @@ async def get_document_status(filename: str):
             
     return {"status": "NOT_FOUND"}
 
+@app.get("/knowledge-base")
+async def get_knowledge_base():
+    chroma_client = get_chroma_client()
+    collection = chroma_client.get_or_create_collection(name="documents")
+    
+    # Get all unique filenames from metadatas
+    results = collection.get(include=["metadatas"])
+    metadatas = results["metadatas"]
+    
+    unique_docs = {}
+    for meta in metadatas:
+        filename = meta.get("filename")
+        if filename and filename not in unique_docs:
+            unique_docs[filename] = {
+                "filename": filename,
+                "content_type": meta.get("content_type", "unknown")
+            }
+            
+    return {"documents": list(unique_docs.values())}
+
 @app.delete("/documents/{filename}")
 async def delete_document(filename: str):
     logger.info(f"Deleting document: {filename}")
@@ -98,6 +133,8 @@ async def delete_document(filename: str):
     # 1. Remove from ChromaDB
     chroma_client = get_chroma_client()
     collection = chroma_client.get_or_create_collection(name="documents")
+    
+    # Delete based on filename in metadata
     collection.delete(where={"filename": filename})
     
     # 2. Remove files
@@ -115,17 +152,18 @@ async def delete_document(filename: str):
 async def chat(data: dict):
     question = data.get("question")
     generation_model = data.get("generation_model")
+    language = data.get("language", "Spanish")
     
     if not question:
         return {"error": "Question is required"}
         
-    logger.info(f"Received chat query: {question} (gen: {generation_model})")
+    logger.info(f"Received chat query: {question} (gen: {generation_model}, lang: {language})")
     
     # Retrieval
     context = retrieve_context(question)
     
     # Generation
-    response = generate_answer(question, context, generation_model)
+    response = generate_answer(question, context, generation_model, language)
     
     return response
 

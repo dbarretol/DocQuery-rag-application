@@ -1,9 +1,13 @@
+import logging
 from app.backend.storage.chroma import get_chroma_client
 from app.backend.config_loader import get_embedding_model
 from app.backend.rag.utils import get_client
 from app.backend.rag.retry_config import retry_on_api_errors
 
+logger = logging.getLogger("uvicorn")
+
 def retrieve_context(query: str, k: int = 5):
+    logger.info(f"Retrieving context for query: '{query}'")
     client = get_client()
     
     @retry_on_api_errors
@@ -16,6 +20,7 @@ def retrieve_context(query: str, k: int = 5):
     # 1. Generate query embedding using valid embedding model
     response = _embed()
     embedding = response.embeddings[0].values
+    logger.debug("Query embedded successfully.")
     
     # 2. Query Chroma
     chroma_client = get_chroma_client()
@@ -24,4 +29,5 @@ def retrieve_context(query: str, k: int = 5):
         query_embeddings=[embedding],
         n_results=k
     )
+    logger.info(f"Retrieved {len(results.get('documents', [[]])[0])} documents from ChromaDB.")
     return results
