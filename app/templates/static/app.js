@@ -444,11 +444,13 @@ document.addEventListener('DOMContentLoaded', () => {
             let answerHtml = marked.parse(data.answer || 'Sin respuesta.');
             
             // Process [n] or [n, m] citations in the text
+            const citedIndices = new Set();
             answerHtml = answerHtml.replace(/\[([\d,\s]+)\]/g, (match, group) => {
                 const numbers = group.split(',').map(n => n.trim());
                 const links = numbers.map(n => {
                     const idx = parseInt(n) - 1;
                     if (data.sources && data.sources[idx]) {
+                        citedIndices.add(idx);
                         return `<a class="citation-link" onclick="openPassageModal('${data.sources[idx].id}')">${n}</a>`;
                     }
                     return n;
@@ -460,7 +462,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="message-avatar">AI</div>
                 <div class="message-bubble">
                     <div class="message-content">${answerHtml}</div>
-                    ${renderSources(data.sources)}
+                    ${renderSources(data.sources, citedIndices)}
                 </div>
             `;
             chatMessages.appendChild(botMessage);
@@ -485,14 +487,17 @@ document.addEventListener('DOMContentLoaded', () => {
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-    function renderSources(sources) {
-        if (!sources || sources.length === 0) return '';
+    function renderSources(sources, citedIndices) {
+        if (!sources || sources.length === 0 || citedIndices.size === 0) return '';
         
-        const sourceChips = sources.map((s, i) => `
-            <button class="source-chip" onclick="openPassageModal('${s.id}')">
-                [${i + 1}] ${escHtml(s.filename)}${s.page !== 'Unknown' ? ' (pág. ' + s.page + ')' : ''}
-            </button>
-        `).join('');
+        const sourceChips = sources.map((s, i) => {
+            if (!citedIndices.has(i)) return null;
+            return `
+                <button class="source-chip" onclick="openPassageModal('${s.id}')">
+                    [${i + 1}] ${escHtml(s.filename)}${s.page !== 'Unknown' ? ' (pág. ' + s.page + ')' : ''}
+                </button>
+            `;
+        }).filter(h => h !== null).join('');
         
         return `<div class="source-list">${sourceChips}</div>`;
     }
