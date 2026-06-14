@@ -11,26 +11,38 @@ Esta guía detalla los pasos para ejecutar la aplicación **DocQuery** de forma 
 ## 2. Configuración del Entorno Local
 
 1.  **Navega a la raíz del proyecto:**
-    Asegúrate de estar en el directorio `C:\Dev_Projects\TAREAS\6. Model-Deployment\CONTROL\`.
+    Asegúrate de estar en el directorio raíz del proyecto.
 
 2.  **Crea y activa el entorno virtual:**
-    ```powershell
-    python -m venv .venv
-    .venv\Scripts\activate
-    ```
+
+    *   **Windows (PowerShell):**
+        ```powershell
+        .venv\Scripts\activate
+        ```
+
+    *   **Linux / macOS (Bash/Zsh):**
+        ```bash
+        source .venv/bin/activate
+        ```
 
 3.  **Instala las dependencias:**
-    ```powershell
+    ```bash
     uv sync
     ```
 
 ## 3. Ejecución de la Aplicación
 
-Para iniciar el servidor de la aplicación, utiliza el siguiente comando en PowerShell:
+Para iniciar el servidor de la aplicación, utiliza el siguiente comando:
 
-```powershell
-$env:GEMINI_API_KEY="TU_GEMINI_API_KEY"; uv run uvicorn app.backend.main:app --port 8000 --reload
-```
+*   **Windows (PowerShell):**
+    ```powershell
+    $env:GEMINI_API_KEY="TU_GEMINI_API_KEY"; uv run uvicorn app.backend.main:app --port 8000 --reload
+    ```
+
+*   **Linux / macOS (Bash/Zsh):**
+    ```bash
+    GEMINI_API_KEY="TU_GEMINI_API_KEY" uv run uvicorn app.backend.main:app --port 8000 --reload
+    ```
 
 *Sustituye `TU_GEMINI_API_KEY` por tu clave real.*
 
@@ -53,12 +65,19 @@ Una vez que el servidor esté activo (verás un mensaje de "Application startup 
 Si prefieres ejecutar solo la aplicación usando un contenedor Docker (sin Compose):
 
 1.  **Construye la imagen:**
-    ```powershell
+    ```bash
     docker build -t docquery -f deployment/Dockerfile .
     ```
 
 2.  **Ejecuta el contenedor:**
-    ```powershell
-    $env:GEMINI_API_KEY="TU_GEMINI_API_KEY"; docker run --rm -p 8000:8000 -e GEMINI_API_KEY=$env:GEMINI_API_KEY docquery
-    ```
+
+    *   **Windows (PowerShell):**
+        ```powershell
+        $env:GEMINI_API_KEY="TU_GEMINI_API_KEY"; docker run --rm -p 8000:8000 -e GEMINI_API_KEY=$env:GEMINI_API_KEY docquery
+        ```
+
+    *   **Linux / macOS (Bash/Zsh):**
+        ```bash
+        docker run --rm -p 8000:8000 -e GEMINI_API_KEY="TU_GEMINI_API_KEY" docquery
+        ```
     *Puedes verificar el funcionamiento en `http://localhost:8000/health` de la misma manera.*
