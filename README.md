@@ -38,8 +38,8 @@ Para detalles técnicos adicionales, consulta los siguientes archivos en `docs/`
 ## Ejecución
 
 para mas detalles revisar:
-- [`Docker`](deployment\README.md): Guia para lanzar solo la aplicacion
-- [`Docker compose`](deployment\README-DockerCompose.md): Guia para lanzar la aplicacion + stack de observabilidad
+- [`Docker`](deployment/README.md): Guia para lanzar solo la aplicacion
+- [`Docker compose`](deployment/README-DockerCompose.md): Guia para lanzar la aplicacion + stack de observabilidad
 
 ### Requisitos previos
 - Docker y Docker Compose.
