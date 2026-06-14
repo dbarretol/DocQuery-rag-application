@@ -3,7 +3,6 @@ name: CI
 on:
   push:
     branches:
-      - tests/ci-workflow
       - main
   pull_request:
     branches:
