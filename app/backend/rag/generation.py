@@ -1,15 +1,18 @@
-import logging
 import json
+import time
 from pydantic import TypeAdapter
+from app.backend.logger_setup import setup_logger
+from app.backend.metrics import GENERATION_LATENCY, TOKEN_USAGE
 from app.backend.config_loader import get_generation_model, get_prompt
 from app.backend.rag.utils import get_client
 from app.backend.rag.retry_config import retry_on_api_errors
 from app.backend.rag.models import RAGContext
 from app.backend.api_models import ChatResponse, Source
 
-logger = logging.getLogger("uvicorn")
+logger = setup_logger("generation")
 
 def generate_answer(query: str, context: RAGContext, model_name: str = None, language: str = "Spanish") -> ChatResponse:
+    start_time = time.time()
     logger.info(f"Generating answer for: '{query}' (model: {model_name or get_generation_model()}, lang: {language})")
     client = get_client()
     
@@ -29,25 +32,38 @@ def generate_answer(query: str, context: RAGContext, model_name: str = None, lan
     
     model = model_name or get_generation_model()
     
-    @retry_on_api_errors
-    def _call_gemini():
-        return client.models.generate_content(
-            model=model,
-            contents=prompt
-        )
+    try:
+        @retry_on_api_errors
+        def _call_gemini():
+            return client.models.generate_content(
+                model=model,
+                contents=prompt
+            )
+            
+        response = _call_gemini()
         
-    response = _call_gemini()
-    logger.info("Answer generated successfully.")
-    
-    # Ensure unique sources by id
-    unique_sources = []
-    seen_ids = set()
-    for s in sources:
-        if s.id not in seen_ids:
-            unique_sources.append(s)
-            seen_ids.add(s.id)
+        # Track metrics
+        metadata = response.usage_metadata
+        if metadata:
+            TOKEN_USAGE.labels(model=model, type="input").inc(metadata.prompt_token_count)
+            TOKEN_USAGE.labels(model=model, type="output").inc(metadata.candidates_token_count)
+            
+        GENERATION_LATENCY.labels(model=model, status="success").observe(time.time() - start_time)
+        logger.info("Answer generated successfully.")
+        
+        # Ensure unique sources by id
+        unique_sources = []
+        seen_ids = set()
+        for s in sources:
+            if s.id not in seen_ids:
+                unique_sources.append(s)
+                seen_ids.add(s.id)
 
-    return ChatResponse(answer=response.text, sources=unique_sources)
+        return ChatResponse(answer=response.text, sources=unique_sources)
+    except Exception as e:
+        GENERATION_LATENCY.labels(model=model, status="error").observe(time.time() - start_time)
+        logger.error(f"Error generating answer: {e}")
+        raise
 
 def generate_suggestions(question: str, answer: str, context: RAGContext, language: str = "Spanish"):
     logger.info("Generating follow-up suggestions.")

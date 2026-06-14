@@ -1,9 +1,6 @@
 import os
 from dotenv import load_dotenv
-import logging
-import sys
 import shutil
-import datetime
 from fastapi import FastAPI, UploadFile, File, BackgroundTasks, Form, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -11,7 +8,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from prometheus_fastapi_instrumentator import Instrumentator
 from starlette.requests import Request
-from pythonjsonlogger import json
 from app.backend.rag.ingest import ingest_document
 from app.backend.rag.retrieval import retrieve_context
 from app.backend.rag.generation import generate_answer, generate_suggestions
@@ -24,34 +20,18 @@ from app.backend.api_models import (
     GCSConfigRequest
 )
 from app.backend.storage.models import storage_config
+from app.backend.middleware import CorrelationIDMiddleware
+from app.backend.logger_setup import setup_logger
 
 load_dotenv()
 
 # Setup Logging
-os.makedirs("logs", exist_ok=True)
-timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-log_filename = f"logs/app_{timestamp}.log"
-
-logger = logging.getLogger("uvicorn")
-# Remove existing handlers to avoid duplicates
-for handler in logger.handlers[:]:
-    logger.removeHandler(handler)
-
-# File Handler
-file_handler = logging.FileHandler(log_filename)
-file_handler.setFormatter(logging.Formatter('%(asctime)s %(name)s %(levelname)s %(message)s'))
-logger.addHandler(file_handler)
-
-# Console Handler for Cloud Run compatibility
-console_handler = logging.StreamHandler(sys.stdout)
-console_handler.setFormatter(json.JsonFormatter('%(asctime)s %(name)s %(levelname)s %(message)s'))
-logger.addHandler(console_handler)
-
-logger.setLevel(logging.INFO)
-logger.info(f"Logging initialized. Log file: {log_filename}")
+logger = setup_logger("uvicorn")
+logger.info("Logging initialized with Correlation ID support")
 
 app = FastAPI(title="Multimodal RAG Platform")
 
+app.add_middleware(CorrelationIDMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -168,6 +148,10 @@ async def chat(data: ChatRequest):
     
     # Generation
     response = generate_answer(question, context, generation_model, language)
+    
+    # Log context sources for observability
+    source_ids = [s.id for s in response.sources]
+    logger.info(f"Chat query completed. Context sources used: {source_ids}")
     
     return response
 
