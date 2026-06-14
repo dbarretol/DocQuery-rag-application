@@ -29,6 +29,10 @@ jobs:
 
       - name: Run lint
         run: uv run ruff check .
+        env:
+          GEMINI_API_KEY: "dummy-key-for-ci"
 
       - name: Run tests
         run: uv run pytest tests/
+        env:
+          GEMINI_API_KEY: "dummy-key-for-ci"
