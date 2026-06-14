@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block content %}
+        <!-- Sidebar: documentos -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">Documentos</div>
+                
+                <!-- Embedding Model Info -->
+                <div id="sidebarEmbModelInfo" style="display: inline-block; margin-bottom: 2px; font-size: 11px; color: var(--uni-red); background: var(--uni-red-dim); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border);">
+                    <div style="font-weight: 600;">EMB: <span id="sidebarEmbModel">...</span></div>
+                </div>
+                <div id="sidebarEmbModelDesc" style="margin-bottom: 12px; font-size: 11px; color: var(--text-lo); white-space: normal; word-wrap: break-word;"></div>
+
+
+                <!-- Upload zone -->
+                <div class="upload-zone" id="uploadZone">
+                    <input type="file" id="fileInput" accept=".pdf,.txt,.docx,.png,.jpg,.jpeg">
+                    <div class="upload-zone-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                    </div>
+                    <p><strong>Arrastra un archivo</strong><br>o haz clic para seleccionar</p>
+                </div>
+
+                <button class="btn-upload" id="btnUpload" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" width="14" height="14">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    Subir documento
+                </button>
+                <div class="upload-status" id="uploadStatus"></div>
+            </div>
+
+            <!-- Doc list -->
+            <div class="doc-list" id="docList">
+                <div class="doc-list-empty" id="emptyState">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" display="block" style="margin: 0 auto 8px">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Aún no hay documentos.<br>Sube uno para empezar.
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main: chat -->
+        <main class="main">
+            <div class="chat-header">
+                <div style="flex: 1;">
+                    <div class="chat-header-title">Consulta tus documentos</div>
+                    <div class="chat-header-sub">Hazle preguntas en lenguaje natural</div>
+                </div>
+                <div style="text-align: right;">
+                    <div id="headerModelInfo" style="display: inline-block; font-size: 11px; color: var(--uni-red); background: var(--uni-red-dim); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border);">
+                        AI: <span id="headerGenModel" style="font-weight: 600; color: var(--uni-red);">...</span>
+                    </div>
+                    <div id="headerModelDesc" style="font-size: 11px; color: var(--text-lo); margin-top: 4px;"></div>
+                </div>
+            </div>
+
+            <div class="chat-messages" id="chatMessages">
+                <!-- Empty state shown by default -->
+                <div class="chat-empty" id="chatEmpty">
+                    <div class="chat-empty-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                    </div>
+                    <h3>¿Qué quieres saber?</h3>
+                    <p>Sube un documento y haz tu primera pregunta. DocQuery buscará la respuesta en el contenido del archivo.</p>
+                </div>
+            </div>
+
+            <div class="suggestions-area">
+                <div class="suggestions" id="suggestions">
+                    <button class="suggestion-chip" onclick="setQuery('Resume el documento')">📄 Resumen</button>
+                    <button class="suggestion-chip" onclick="setQuery('¿De qué trata este documento?')">🎯 Tema principal</button>
+                    <button class="suggestion-chip" onclick="setQuery('Explica los puntos más importantes')">⭐ Puntos clave</button>
+                    <button class="suggestion-chip" onclick="setQuery('Identifica fechas, nombres y cifras importantes')">🔍 Datos importantes</button>
+                </div>
+            </div>
+
+            <div class="chat-footer">
+                <div class="chat-input-row">
+                    <textarea
+                        class="chat-input-box"
+                        id="chatInput"
+                        placeholder="Escribe tu pregunta…"
+                        rows="1"
+                    ></textarea>
+                    <button class="btn-send" id="btnSend" title="Enviar">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </main>
+
+<script src="/static/app.js"></script>
+{% endblock %}
