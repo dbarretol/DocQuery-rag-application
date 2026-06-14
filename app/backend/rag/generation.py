@@ -1,13 +1,13 @@
-import logging
 import json
 from pydantic import TypeAdapter
+from app.backend.logger_setup import setup_logger
 from app.backend.config_loader import get_generation_model, get_prompt
 from app.backend.rag.utils import get_client
 from app.backend.rag.retry_config import retry_on_api_errors
 from app.backend.rag.models import RAGContext
 from app.backend.api_models import ChatResponse, Source
 
-logger = logging.getLogger("uvicorn")
+logger = setup_logger("generation")
 
 def generate_answer(query: str, context: RAGContext, model_name: str = None, language: str = "Spanish") -> ChatResponse:
     logger.info(f"Generating answer for: '{query}' (model: {model_name or get_generation_model()}, lang: {language})")

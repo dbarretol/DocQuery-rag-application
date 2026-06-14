@@ -1,4 +1,4 @@
-import logging
+from app.backend.logger_setup import setup_logger
 from app.backend.storage.chroma import get_chroma_client
 from app.backend.config_loader import get_embedding_model
 from app.backend.rag.utils import get_client
@@ -6,7 +6,7 @@ from app.backend.rag.retry_config import retry_on_api_errors
 from app.backend.rag.models import RAGContext, DocumentChunk
 from app.backend.storage.models import storage_config
 
-logger = logging.getLogger("uvicorn")
+logger = setup_logger("retrieval")
 
 def retrieve_context(query: str, k: int = 5) -> RAGContext:
     logger.info(f"Retrieving context for query: '{query}'")
