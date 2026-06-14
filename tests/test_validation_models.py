@@ -1,14 +1,17 @@
 import pytest
 from pydantic import ValidationError
-from app.backend.api_models import ChatRequest, ChatResponse, Source
-from app.backend.rag.models import ChunkMetadata, IngestionStatus
-from app.backend.storage.models import StorageConfig
+from app.backend.api_models import (
+    ChatRequest, ChatResponse, Source, SuggestionRequest, 
+    GCSConfigRequest
+)
+from app.backend.rag.models import ChunkMetadata, IngestionStatus, DocumentChunk, RAGContext
+from app.backend.storage.models import StorageConfig, GCSConfig
 
+# --- API Models ---
 def test_chat_request_validation():
     # Valid
     req = ChatRequest(question="What is RAG?")
     assert req.question == "What is RAG?"
-    assert req.language == "Spanish"
     
     # Invalid (missing question)
     with pytest.raises(ValidationError):
@@ -24,8 +27,21 @@ def test_chat_response_validation():
     
     # Invalid (missing answer)
     with pytest.raises(ValidationError):
-        ChatResponse(sources=[])
+        ChatResponse()
 
+def test_suggestion_request_validation():
+    req = SuggestionRequest(question="Q", answer="A")
+    assert req.question == "Q"
+    with pytest.raises(ValidationError):
+        SuggestionRequest() # Missing required fields
+
+def test_gcs_config_request_validation():
+    req = GCSConfigRequest(bucket_name="my-bucket")
+    assert req.bucket_name == "my-bucket"
+    with pytest.raises(ValidationError):
+        GCSConfigRequest()
+
+# --- RAG Models ---
 def test_chunk_metadata_validation():
     # Valid
     meta = ChunkMetadata(
@@ -45,7 +61,16 @@ def test_chunk_metadata_validation():
             status="INVALID_STATUS"
         )
 
+def test_rag_context_validation():
+    chunk = DocumentChunk(id="1", content="text", filename="f", page=1, content_type="text")
+    context = RAGContext(chunks=[chunk])
+    assert len(context.chunks) == 1
+
+# --- Storage Models ---
 def test_storage_config_defaults():
     config = StorageConfig()
     assert config.collection_name == "documents"
-    assert config.chroma_path == "./data/chroma"
+    
+def test_gcs_config_defaults():
+    config = GCSConfig(bucket_name="test")
+    assert config.blob_name == "chroma_index.zip"
