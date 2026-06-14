@@ -10,9 +10,10 @@ def test_chat_endpoint_integration():
          patch("app.backend.main.generate_answer") as mock_generation:
         
         mock_retrieval.return_value = MagicMock() # RAGContext
-        mock_generation.return_value = {"answer": "RAG is...", "sources": []}
-        
+        mock_generation.return_value = MagicMock(answer="RAG is...", sources=[])
+
         payload = {"question": "What is RAG?"}
+
         response = client.post("/chat", json=payload)
         
         assert response.status_code == 200

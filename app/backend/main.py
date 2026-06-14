@@ -149,6 +149,10 @@ async def chat(data: ChatRequest):
     # Generation
     response = generate_answer(question, context, generation_model, language)
     
+    # Log context sources for observability
+    source_ids = [s.id for s in response.sources]
+    logger.info(f"Chat query completed. Context sources used: {source_ids}")
+    
     return response
 
 @app.post("/chat/suggestions", response_model=SuggestionResponse)
