@@ -1,16 +1,10 @@
 services:
   app:
-    build:
-      context: .
-      dockerfile: deployment/Dockerfile
+    image: ghcr.io/dbarretol/docquery:latest
     ports:
       - "8000:8000"
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
-    volumes:
-      - .:/app
-      - /app/.venv
-    command: uv run uvicorn app.backend.main:app --host 0.0.0.0 --port 8000
 
   prometheus:
     image: prom/prometheus

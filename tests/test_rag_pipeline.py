@@ -62,8 +62,10 @@ def test_generate_answer(mock_get_client):
     mock_get_client.return_value = mock_client
     mock_response = MagicMock()
     mock_response.text = "The answer is 42."
+    # Corregir la metadata para que sean enteros, no MagicMocks
+    mock_response.usage_metadata.prompt_token_count = 100
+    mock_response.usage_metadata.candidates_token_count = 50
     mock_client.models.generate_content.return_value = mock_response
-    
     # Run generation
     context = RAGContext(chunks=[
         DocumentChunk(id="id1", content="text", filename="test.pdf", page=1, content_type="text")
